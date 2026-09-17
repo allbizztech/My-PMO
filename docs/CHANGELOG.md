@@ -27,6 +27,27 @@
 
 ---
 
+## [17 September 2026] — Refaktor Modular Frontend (No 2) & Kalendar Projek Bersepadu Dinamik (No 4)
+
+### Added
+- **Struktur Modular Frontend (`client/src/`)**:
+  - `client/src/pages/`: Diekstrak sepenuhnya kepada komponen berasingan: `AuditTrailPage.jsx`, `BackupPage.jsx`, `CalendarPage.jsx`, `DashboardPage.jsx`, `LandingPage.jsx`, `LoginPage.jsx`, `ProjectDetailPage.jsx`, `ProjectListPage.jsx`, `ReportsPage.jsx`, `SettingsPage.jsx`, `UsersPage.jsx`.
+  - `client/src/components/common/`: Komponen UI asas diguna semula (`Card.jsx`, `Badge.jsx`, `ProgressBar.jsx`, `DonutChart.jsx`).
+  - `client/src/services/`: Pemusatan komunikasi API (`api.js`), data simulasi rujukan (`mockData.js`), dan fungsi utiliti pemformatan (`formatters.js`).
+- **Enjin Kalendar Projek Bersepadu Dinamik (`api/modules/calendar.php` & `CalendarPage.jsx`)**:
+  - Pengagregatan automatik merentasi semua projek: tarikh akhir projek (`projects.end_date`), jadual bayaran/milestone (`gantt_tasks`), dan fasa kerja Gantt.
+  - Sokongan pendaftaran acara tersuai (mesyuarat, ulasan teknikal, tarikh penting) yang disimpan dalam jadual `calendar_events`.
+  - Navigasi bulan/tahun dinamik (Januari–Disember), penapis mengikut projek atau kategori, grid kalendar sebenar mengikut hari, serta modal butiran acara dengan pintasan terus ke paparan terperinci projek.
+
+### Changed
+- `client/src/App.jsx` kini diringkaskan daripada **8,434 baris** kepada hanya **579 baris** yang memfokuskan kepada router paparan utama, menu navigasi, dan pengurusan sesi pengguna.
+- Kod binaan Vite (`npm run build`) kini lebih pantas (sekitar ~300ms) dengan modulariti penuh.
+
+### Schema
+- Menambah jadual `calendar_events` (`id`, `title`, `description`, `event_date`, `event_type`, `project_id`, `created_by`, `color`, `created_at`, `updated_at`) dalam pangkalan data `my_pmo_db`, `docs/SCHEMA.md`, dan `schema.sql`.
+
+---
+
 ## [17 September 2026] — Pembaikan Log Masuk, Sistem Notifikasi Pintar & Konfigurasi SMTP
 
 ### Added

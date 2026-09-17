@@ -126,6 +126,18 @@
 | `email_sent` | TINYINT(1) DEFAULT 0 | Status penghantaran emel |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
+### 9. `calendar_events` (Acara & Mesyuarat Kalendar Projek)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT AUTO_INCREMENT PK | ID unik rekod acara kalendar |
+| `project_id` | INT NULL (FK) | Rujuk `projects.id` (pilihan) |
+| `title` | VARCHAR(255) NOT NULL | Tajuk acara / mesyuarat |
+| `event_date` | DATE NOT NULL | Tarikh acara berlangsung |
+| `event_type` | ENUM('meeting', 'milestone', 'deadline', 'task', 'review') | Jenis kategori acara kalendar |
+| `description` | TEXT NULL | Butiran tambahan / lokasi mesyuarat |
+| `created_by` | INT NULL (FK) | Rujuk `users.id` (pegawai yang mendaftar) |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+
 ---
 
 ## Changelog
@@ -136,3 +148,4 @@
 | 20 Mei 2026 | Integrasi API & UI Modul Kewangan (`finances`) sepenuhnya | Antigravity AI |
 | 17 Sep 2026 | Tambah lajur `milestone_id` dalam `finances` untuk menghubungkan tuntutan dengan Jadual Bayaran Projek | Antigravity AI |
 | 17 Sep 2026 | Tambah jadual `smtp_settings` dan `notifications` untuk modul Sistem Notifikasi Pintar (Auto-Alert) & Konfigurasi E-mel SMTP | Antigravity AI |
+| 17 Sep 2026 | Tambah jadual `calendar_events` untuk sokongan modul Kalendar Projek Bersepadu Dinamik | Antigravity AI |

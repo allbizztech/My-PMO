@@ -156,6 +156,23 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `calendar_events` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `project_id` INT DEFAULT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `event_date` DATE NOT NULL,
+  `event_type` ENUM('meeting', 'milestone', 'deadline', 'task', 'review') DEFAULT 'meeting',
+  `description` TEXT DEFAULT NULL,
+  `created_by` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `calendar_events` (`id`, `project_id`, `title`, `event_date`, `event_type`, `description`) VALUES
+(1, 1, 'Mesyuarat Lembaga PMO PKPMP Bil. 2/2026', '2026-09-22', 'meeting', 'Bilik Mesyuarat Utama Istana Kehakiman, Putrajaya'),
+(2, 1, 'Sesi Semakan Bajet & Kontrak ICT', '2026-09-28', 'review', 'Penyelarasan bersama Unit Kewangan & BTM PKPMP');
+
 -- SEED DATA (PKPMP Exclusively)
 INSERT IGNORE INTO `users` (`id`, `name`, `email`, `password`, `role`, `agency`) VALUES
 (1, 'Datuk Dr. Azman', 'admin@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'superadmin', 'PKPMP'),
