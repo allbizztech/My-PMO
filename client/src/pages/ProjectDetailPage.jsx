@@ -4,10 +4,12 @@ import {
     FileText, UploadCloud, Briefcase, ChevronRight, Edit,
     Activity, Building2, FolderKanban, UserCheck,
     Calendar as CalendarIcon, DollarSign, Wallet, Plus,
-    Clock, Trash2, CheckCircle, Receipt, Folder, Download, Users
+    Clock, Trash2, CheckCircle, Receipt, Folder, Download, Users,
+    ClipboardCheck
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
+import { ProcurementChecklistTab } from '../components/project/ProcurementChecklistTab';
 import { TEAM_MEMBERS } from '../services/mockData';
 import { API_ENDPOINTS } from '../services/api';
 
@@ -2403,13 +2405,14 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
             </div>
 
             {/* --- TABS NAVIGATION (COMPACT 1-PAGE ZERO-SCROLL GRID) --- */}
-            <div className="bg-slate-100/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 mb-5 shadow-inner w-full">
+            <div className="bg-slate-100/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 mb-5 shadow-inner w-full">
                 {[
                     { id: 'Jadual Bayaran', label: 'Jadual Bayaran', icon: Wallet },
                     { id: 'Carta Gantt', label: 'Carta Gantt', icon: CalendarIcon },
                     { id: 'Tugasan (Kanban)', label: 'Tugasan (Kanban)', icon: FolderKanban },
                     { id: 'Kewangan Projek', label: 'Kewangan Projek', icon: DollarSign },
                     { id: 'Dokumen (DMS)', label: 'Dokumen (DMS)', icon: FileText },
+                    { id: 'Senarai Semak', label: 'Senarai Semak', icon: ClipboardCheck },
                     { id: 'Ahli Pasukan', label: 'Ahli Pasukan', icon: Users },
                 ].map(tab => {
                     const TabIcon = tab.icon;
@@ -3129,6 +3132,16 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                             </div>
                         );
                     })()
+                }
+
+                {
+                    activeTab === 'Senarai Semak' && (
+                        <ProcurementChecklistTab
+                            project={currentProject}
+                            currentUser={currentUser}
+                            showToastNotification={showToastNotification}
+                        />
+                    )
                 }
 
                 {

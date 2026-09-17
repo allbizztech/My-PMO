@@ -19,7 +19,8 @@ export const API_ENDPOINTS = {
     USERS: `${API_BASE_URL}/users.php`,
     AUDIT: `${API_BASE_URL}/audit.php`,
     BACKUP: `${API_BASE_URL}/backup.php`,
-    SMTP: `${API_BASE_URL}/smtp_settings.php`
+    SMTP: `${API_BASE_URL}/smtp_settings.php`,
+    PROCUREMENT_CHECKLIST: `${API_BASE_URL}/procurement_checklist.php`
 };
 
 export async function apiFetch(url, options = {}) {

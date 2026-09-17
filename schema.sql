@@ -177,7 +177,46 @@ INSERT IGNORE INTO `calendar_events` (`id`, `project_id`, `title`, `event_date`,
 INSERT IGNORE INTO `users` (`id`, `name`, `email`, `password`, `role`, `agency`) VALUES
 (1, 'Datuk Dr. Azman', 'admin@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'superadmin', 'PKPMP'),
 (2, 'Ahmad Faiz', 'faiz@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'pmo_gov', 'PKPMP'),
-(3, 'Sarah Lee', 'sarah@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'admin_agency', 'PKPMP');
+-- PROCURMENT CHECKLIST TABLES (SOP SENARAI SEMAK PEROLEHAN ICT PKPMP)
+CREATE TABLE IF NOT EXISTS `procurement_checklists` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `project_id` INT NOT NULL UNIQUE,
+  `procurement_method` ENUM('direct_purchase', 'quotation', 'tender') NOT NULL DEFAULT 'quotation',
+  `estimated_value` DECIMAL(15,2) DEFAULT 0.00,
+  `requires_contract` TINYINT(1) DEFAULT 0 COMMENT '1 jika tempoh melebihi 4 bulan',
+  `contract_period_months` INT DEFAULT 0,
+  `status` ENUM('draft', 'in_progress', 'completed') DEFAULT 'in_progress',
+  `completed_items` INT DEFAULT 0,
+  `total_items` INT DEFAULT 0,
+  `notes` TEXT NULL,
+  `created_by` INT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_checklist_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `procurement_checklist_items` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `checklist_id` INT NOT NULL,
+  `phase_number` INT NOT NULL,
+  `phase_name` VARCHAR(150) NOT NULL,
+  `item_code` VARCHAR(50) NOT NULL,
+  `item_title` VARCHAR(255) NOT NULL,
+  `description` TEXT NULL,
+  `is_mandatory` TINYINT(1) DEFAULT 1,
+  `is_checked` TINYINT(1) DEFAULT 0,
+  `checked_by` VARCHAR(100) NULL,
+  `checked_at` DATETIME NULL,
+  `document_id` INT NULL COMMENT 'Pautan ke fail documents.id (DMS)',
+  `reference_no` VARCHAR(100) NULL COMMENT 'No. Rujukan Surat / Minit / Kelulusan',
+  `status` ENUM('pending', 'submitted', 'verified', 'not_applicable') DEFAULT 'pending',
+  `remarks` TEXT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_checklist_items_parent` FOREIGN KEY (`checklist_id`) REFERENCES `procurement_checklists` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_checklist_item_doc` FOREIGN KEY (`document_id`) REFERENCES `documents` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 
 

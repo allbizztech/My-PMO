@@ -138,6 +138,44 @@
 | `created_by` | INT NULL (FK) | Rujuk `users.id` (pegawai yang mendaftar) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
+### 10. `procurement_checklists` (Induk Senarai Semak Perolehan ICT PKPMP)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT AUTO_INCREMENT PK | ID unik senarai semak |
+| `project_id` | INT NOT NULL UNIQUE (FK) | Rujukan projek `projects.id` |
+| `procurement_method` | ENUM('direct_purchase', 'quotation', 'tender') | Kaedah perolehan mengikut had nilai |
+| `estimated_value` | DECIMAL(15,2) DEFAULT 0.00 | Nilai anggaran perolehan (RM) |
+| `requires_contract` | TINYINT(1) DEFAULT 0 | 1 jika tempoh perolehan melebihi 4 bulan |
+| `contract_period_months` | INT DEFAULT 0 | Tempoh kontrak dalam bulan |
+| `status` | ENUM('draft', 'in_progress', 'completed') | Status pematuhan senarai semak |
+| `completed_items` | INT DEFAULT 0 | Bilangan item dokumen selesai |
+| `total_items` | INT DEFAULT 0 | Jumlah item dokumen yang perlu disemak |
+| `notes` | TEXT NULL | Catatan keseluruhan perolehan |
+| `created_by` | INT NULL | Pegawai PMO pencipta |
+| `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP |
+
+### 11. `procurement_checklist_items` (Item 8 Fasa Semakan Dokumen)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT AUTO_INCREMENT PK | ID unik item semakan |
+| `checklist_id` | INT NOT NULL (FK) | Rujukan `procurement_checklists.id` |
+| `phase_number` | INT NOT NULL | Nombor fasa SOP PKPMP (1 hingga 8) |
+| `phase_name` | VARCHAR(150) NOT NULL | Nama fasa (cth: Kelulusan Teknikal JPICT, Lampiran J, dll) |
+| `item_code` | VARCHAR(50) NOT NULL | Kod item semakan (cth: 'F1-01', 'F2-01') |
+| `item_title` | VARCHAR(255) NOT NULL | Tajuk dokumen/keperluan semakan |
+| `description` | TEXT NULL | Panduan atau keperluan dokumen |
+| `is_mandatory` | TINYINT(1) DEFAULT 1 | 1: Wajib, 0: Pilihan / Bersyarat |
+| `is_checked` | TINYINT(1) DEFAULT 0 | 1: Disahkan selesai, 0: Belum |
+| `checked_by` | VARCHAR(100) NULL | Nama pegawai yang membuat semakan |
+| `checked_at` | DATETIME NULL | Tarikh & masa semakan disahkan |
+| `document_id` | INT NULL (FK) | Pautan ke fail fail fizikal dalam `documents.id` (DMS) |
+| `reference_no` | VARCHAR(100) NULL | No. Rujukan Surat / Minit / Kelulusan |
+| `status` | ENUM('pending', 'submitted', 'verified', 'not_applicable') | Status item dokumen |
+| `remarks` | TEXT NULL | Catatan pegawai semakan |
+| `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP |
+
 ---
 
 ## Changelog
@@ -149,3 +187,5 @@
 | 17 Sep 2026 | Tambah lajur `milestone_id` dalam `finances` untuk menghubungkan tuntutan dengan Jadual Bayaran Projek | Antigravity AI |
 | 17 Sep 2026 | Tambah jadual `smtp_settings` dan `notifications` untuk modul Sistem Notifikasi Pintar (Auto-Alert) & Konfigurasi E-mel SMTP | Antigravity AI |
 | 17 Sep 2026 | Tambah jadual `calendar_events` untuk sokongan modul Kalendar Projek Bersepadu Dinamik | Antigravity AI |
+| 17 Sep 2026 | Tambah jadual `procurement_checklists` dan `procurement_checklist_items` bagi Modul Senarai Semak Perolehan ICT PKPMP | Antigravity AI |
+

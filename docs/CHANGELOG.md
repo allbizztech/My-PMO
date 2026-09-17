@@ -27,6 +27,28 @@
 
 ---
 
+## [18 September 2026] — Modul Senarai Semak Perolehan ICT (SOP PKPMP)
+
+### Added
+- **Modul Backend API Senarai Semak Perolehan (`api/modules/procurement_checklist.php`)**:
+  - Menyokong penentuan automatik kaedah perolehan mengikut had nilai bajet (Pembelian Terus < RM50k, Sebutharga RM50,001–RM500,000, Tender Awam > RM500,000).
+  - Penjanaan automatik templat 8 fasa pematuhan rasmi SOP PKPMP (Kelulusan JPICT, Lampiran J, Kelulusan Belanja, ezApply, Tapak ePerolehan, Lantikan Jawatankuasa, Dokumen Pelawaan, Keputusan JKSH/LP/SST).
+  - Sokongan tindakan `update_item` (pengesahan checkbox, no. rujukan surat/minit, catatan pemeriksa).
+  - Pautan dokumen fizikal DMS sedia ada atau muat naik terus fail bukti semakan (`upload_and_link`).
+  - Rekod jejak audit automatik ke dalam `audit_logs`.
+- **Komponen Frontend Senarai Semak (`client/src/components/project/ProcurementChecklistTab.jsx`)**:
+  - Kad papan pemuka pematuhan (*Compliance Dashboard*) dengan lencana kaedah, status bon kontrak (>4 bulan), nilai anggaran, dan peratus siap.
+  - Senarai akordion interaktif 8 fasa berserta bar kemajuan fasa, status dokumen, nombor rujukan kelulusan, dan butang muat turun fail bukti.
+  - Modal muat naik fail baharu atau pautkan dokumen sedia ada daripada repositori DMS.
+  - Format paparan cetakan rasmi A4 (*Print-ready view*) berserta ruangan tandatangan Pegawai Penyedia dan Pengesah Bahagian Kewangan/BTM PKPMP.
+- **Integrasi Paparan Terperinci Projek (`client/src/pages/ProjectDetailPage.jsx`)**:
+  - Menambah tab baharu "Senarai Semak" di sebelah tab DMS dan Ahli Pasukan.
+
+### Schema
+- Menambah jadual `procurement_checklists` dan `procurement_checklist_items` dalam MySQL `my_pmo_db`, `docs/SCHEMA.md`, dan `schema.sql`.
+
+---
+
 ## [17 September 2026] — Refaktor Modular Frontend (No 2) & Kalendar Projek Bersepadu Dinamik (No 4)
 
 ### Added
