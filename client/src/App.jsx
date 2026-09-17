@@ -9,7 +9,7 @@ import {
     UserPlus, ShieldCheck, Lock, ArrowLeft, ArrowRight,
     Terminal, Server, ShieldAlert, Key, RefreshCw, AlertTriangle, Monitor, Globe, Edit, Trash2, LogIn, Eye, ChevronDown, CheckCircle, UploadCloud, Folder, Receipt,
     Building2, FolderKanban, UserCheck, HardDrive, Database, FileArchive, Save, Archive, Wallet,
-    Copy, Check
+    Copy, Check, Mail, Send, EyeOff
 } from 'lucide-react';
 
 // --- DATA SIMULASI (MOCK DATA) ---
@@ -136,6 +136,8 @@ const Badge = ({ text, type = 'default' }) => {
         'Sederhana': 'bg-slate-100 text-slate-700 border-slate-200',
         'Ditolak': 'bg-rose-50/80 text-rose-700 border-rose-100',
         'Menunggu Kelulusan': 'bg-amber-50/80 text-amber-700 border-amber-100',
+        'Menunggu': 'bg-amber-50/80 text-amber-700 border-amber-100',
+        'Dalam Tindakan': 'bg-blue-50/80 text-blue-700 border-blue-100',
         'default': 'bg-slate-100 text-slate-700 border-slate-200'
     };
     return (
@@ -1524,14 +1526,9 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
         }
     };
 
-    const [activeTab, setActiveTab] = useState('Gambaran Keseluruhan');
+    const [activeTab, setActiveTab] = useState('Jadual Bayaran');
 
-    const [milestones, setMilestones] = useState([
-        { id: 1, title: 'Fasa 1: Pengumpulan Keperluan', status: 'Selesai', target: 'Suku Ke-1 2026' },
-        { id: 2, title: 'Fasa 2: Infrastruktur Teras', status: 'Selesai', target: 'Suku Ke-2 2026' },
-        { id: 3, title: 'Fasa 3: Audit Keselamatan', status: 'Aktif', target: 'Suku Ke-3 2026' },
-        { id: 4, title: 'Fasa 4: Pelancaran Beta', status: 'Tertunda', target: 'Suku Ke-4 2026' }
-    ]);
+    const [milestones, setMilestones] = useState([]);
 
     const [kanbanTasks, setKanbanTasks] = useState([]);
     const [projectUsers, setProjectUsers] = useState([]);
@@ -1640,7 +1637,27 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                 if (savedC) setTaskComments(JSON.parse(savedC));
                 const savedA = localStorage.getItem(`pmo_task_attachments_${project.id}`);
                 if (savedA) setTaskAttachments(JSON.parse(savedA));
-            } catch (e) { }
+
+                // Muat turun Jadual Bayaran khas untuk projek ini sahaja
+                const savedM = localStorage.getItem(`pmo_payment_schedule_${project.id}`);
+                if (savedM) {
+                    setMilestones(JSON.parse(savedM));
+                } else if (String(project.id) === 'PRJ-101' || String(project.id) === '1') {
+                    // Hanya projek demo asal yang mempunyai data rujukan awal
+                    const demoMilestones = [
+                        { id: 1, title: 'Fasa 1: Bayaran Pendahuluan (10%)', amount: '150,000.00', targetDate: '2026-06-15', target: '15 Jun 2026', status: 'Selesai' },
+                        { id: 2, title: 'Fasa 2: Infrastruktur Teras & Pelayan', amount: '450,000.00', targetDate: '2026-08-30', target: '30 Ogo 2026', status: 'Selesai' },
+                        { id: 3, title: 'Fasa 3: Audit Keselamatan & Integrasi', amount: '250,000.00', targetDate: '2026-10-15', target: '15 Okt 2026', status: 'Menunggu' },
+                        { id: 4, title: 'Fasa 4: Pelancaran & Penyerahan Akhir', amount: '150,000.00', targetDate: '2026-12-01', target: '01 Dis 2026', status: 'Menunggu' }
+                    ];
+                    setMilestones(demoMilestones);
+                } else {
+                    // Projek baharu yang ditambah sentiasa KOSONG
+                    setMilestones([]);
+                }
+            } catch (e) { 
+                setMilestones([]);
+            }
         }
     }, [project]);
     const [finances, setFinances] = useState([]);
@@ -2010,25 +2027,127 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
         e.preventDefault();
     };
 
-    const handleSaveMilestone = (e) => {
+    const handleSaveMilestone = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const newTitle = formData.get('title');
-        const newStatus = formData.get('status');
-        const newTarget = formData.get('target');
+        const newAmount = formData.get('amount') || '0.00';
+        const newTargetDate = formData.get('targetDate');
+        const newStatus = formData.get('status') || 'Menunggu';
+        const newTarget = newTargetDate ? formatDateMalay(newTargetDate) : (formData.get('target') || 'Mengikut Jadual');
+        const cleanedAmount = parseFloat(newAmount.toString().replace(/,/g, '')) || 0;
+
+        let updated = [];
+        let milestoneId = null;
 
         if (editingMilestone) {
-            setMilestones(milestones.map(m => m.id === editingMilestone.id ? { ...m, title: newTitle, status: newStatus, target: newTarget } : m));
+            milestoneId = editingMilestone.id;
+            updated = milestones.map(m => m.id === editingMilestone.id ? { 
+                ...m, 
+                title: newTitle, 
+                amount: newAmount,
+                targetDate: newTargetDate,
+                status: newStatus, 
+                target: newTarget 
+            } : m);
+            showToastNotification?.('Jadual bayaran berjaya dikemaskini!');
         } else {
-            setMilestones([...milestones, { id: Date.now(), title: newTitle, status: newStatus, target: newTarget }]);
+            milestoneId = Date.now();
+            updated = [...milestones, { 
+                id: milestoneId, 
+                title: newTitle, 
+                amount: newAmount,
+                targetDate: newTargetDate,
+                status: newStatus, 
+                target: newTarget 
+            }];
+            showToastNotification?.('Jadual bayaran baharu berjaya ditetapkan!');
         }
+        setMilestones(updated);
+        try {
+            if (project?.id) {
+                localStorage.setItem(`pmo_payment_schedule_${project.id}`, JSON.stringify(updated));
+            }
+        } catch (err) {}
+
+        // Selaraskan rekod secara terus ke Senarai Rekod Kewangan & Denda SLA
+        try {
+            const existingFin = finances.find(f => 
+                (f.milestone_id && String(f.milestone_id) === String(milestoneId)) ||
+                (f.invoice_no && f.invoice_no === `JDL-${String(milestoneId).slice(-4)}`) ||
+                (editingMilestone && f.description === editingMilestone.title)
+            );
+
+            if (existingFin) {
+                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: existingFin.id,
+                        description: newTitle,
+                        amount: cleanedAmount,
+                        status: newStatus,
+                        date: newTargetDate || existingFin.date,
+                        milestone_id: milestoneId,
+                        user_id: currentUser?.id
+                    })
+                });
+            } else {
+                const autoRef = `JDL-${String(milestoneId).slice(-4)}`;
+                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_id: project.id,
+                        invoice_no: autoRef,
+                        description: newTitle,
+                        vendor: project.vendor || 'Belum Dilantik',
+                        amount: cleanedAmount,
+                        status: newStatus,
+                        type: 'Invois',
+                        date: newTargetDate || new Date().toISOString().split('T')[0],
+                        milestone_id: milestoneId,
+                        user_id: currentUser?.id
+                    })
+                });
+            }
+            fetchFinances();
+        } catch (err) {
+            console.error("Ralat selaraskan rekod kewangan:", err);
+        }
+
         setIsMilestoneModalOpen(false);
     };
 
-    const handleDeleteMilestone = () => {
+    const handleDeleteMilestone = async () => {
         if (!milestoneToDelete) return;
-        setMilestones(prev => prev.filter(m => m.id !== milestoneToDelete.id));
-        showToastNotification?.('Pencapaian (Milestone) berjaya dipadam!');
+        const updated = milestones.filter(m => m.id !== milestoneToDelete.id);
+        setMilestones(updated);
+        try {
+            if (project?.id) {
+                localStorage.setItem(`pmo_payment_schedule_${project.id}`, JSON.stringify(updated));
+            }
+        } catch (err) {}
+
+        // Padam rekod pautan dalam finances jika ada
+        const linkedFin = finances.find(f => 
+            (f.milestone_id && String(f.milestone_id) === String(milestoneToDelete.id)) ||
+            (f.invoice_no && f.invoice_no === `JDL-${String(milestoneToDelete.id).slice(-4)}`)
+        );
+        if (linkedFin) {
+            try {
+                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: linkedFin.id, user_id: currentUser?.id })
+                });
+                fetchFinances();
+            } catch (err) {
+                console.error("Ralat padam rekod pautan kewangan:", err);
+            }
+        }
+
+        showToastNotification?.('Jadual bayaran berjaya dipadam!');
         setMilestoneToDelete(null);
     };
 
@@ -2142,6 +2261,8 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
         const amtStr = formData.get('amount') || '0';
         const cleanedAmount = parseFloat(amtStr.toString().replace(/,/g, '')) || 0;
 
+        const linkedMsId = formData.get('linked_milestone_id');
+
         const reqBody = {
             project_id: project.id,
             invoice_no: formData.get('invId'),
@@ -2150,6 +2271,7 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
             amount: cleanedAmount,
             status: formData.get('status'),
             date: formData.get('date'),
+            milestone_id: linkedMsId && linkedMsId !== '' ? parseInt(linkedMsId, 10) : null,
             user_id: currentUser?.id
         };
 
@@ -2175,6 +2297,25 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                     showToastNotification('Tuntutan baru berjaya didaftarkan!');
                 }
             }
+
+            const linkedMsId = formData.get('linked_milestone_id');
+            if (linkedMsId) {
+                setMilestones(prev => {
+                    const updated = prev.map(m => {
+                        if (String(m.id) === String(linkedMsId)) {
+                            return { ...m, status: formData.get('status') };
+                        }
+                        return m;
+                    });
+                    try {
+                        if (project?.id) {
+                            localStorage.setItem(`pmo_payment_schedule_${project.id}`, JSON.stringify(updated));
+                        }
+                    } catch (e) {}
+                    return updated;
+                });
+            }
+
             fetchFinances();
             setIsFinanceModalOpen(false);
         } catch (err) {
@@ -2420,29 +2561,40 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                     <div className="flex min-h-full items-center justify-center p-4">
                         <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-xl animate-in zoom-in-95 duration-200">
                             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[32px]">
-                                <h2 className="text-xl font-extrabold text-slate-900">{editingMilestone ? 'Kemaskini Pencapaian' : 'Tambah Pencapaian'}</h2>
-                                <button onClick={() => setIsMilestoneModalOpen(false)} className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-slate-200">&times;</button>
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-slate-900">{editingMilestone ? 'Kemaskini Jadual Bayaran' : 'Tetapkan Jadual Bayaran Projek'}</h2>
+                                    <p className="text-xs text-slate-500 font-medium mt-0.5">Penetapan tarikh matang awal bagi mengelakkan bayaran lewat</p>
+                                </div>
+                                <button onClick={() => setIsMilestoneModalOpen(false)} className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-slate-200 text-slate-500 hover:text-slate-800">&times;</button>
                             </div>
                             <form onSubmit={handleSaveMilestone} className="p-8 space-y-5">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Keterangan / Fasa</label>
-                                    <input name="title" defaultValue={editingMilestone?.title || ''} required type="text" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-50 outline-none" />
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Peringkat / Keterangan Bayaran</label>
+                                    <input name="title" defaultValue={editingMilestone?.title || ''} required type="text" placeholder="Cth: Bayaran Kemajuan Fasa 1 (Infrastruktur)" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Sasaran Penyiapan</label>
-                                        <input name="target" defaultValue={editingMilestone?.target || ''} required type="text" placeholder="Cth: Suku Ke-1 2026" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none" />
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Jumlah Bayaran (RM)</label>
+                                        <input name="amount" defaultValue={editingMilestone?.amount || ''} required type="text" placeholder="Cth: 150,000.00" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-indigo-700" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
-                                        <select name="status" defaultValue={editingMilestone?.status || 'Aktif'} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
-                                            <option value="Selesai">Selesai</option>
-                                            <option value="Aktif">Aktif</option>
-                                            <option value="Tertunda">Tertunda</option>
-                                        </select>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Tarikh Sasaran Matang</label>
+                                        <input name="targetDate" defaultValue={editingMilestone?.targetDate || ''} required type="date" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium" />
                                     </div>
                                 </div>
-                                <div className="flex justify-end pt-4"><button type="submit" className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800">Simpan Pencapaian</button></div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Status Bayaran</label>
+                                    <select name="status" defaultValue={editingMilestone?.status || 'Menunggu'} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium">
+                                        <option value="Menunggu">Menunggu</option>
+                                        <option value="Dalam Tindakan">Dalam Tindakan</option>
+                                        <option value="Selesai">Selesai</option>
+                                        <option value="Lewat">Lewat</option>
+                                    </select>
+                                </div>
+                                <div className="flex justify-end pt-4 space-x-3 border-t border-slate-100">
+                                    <button type="button" onClick={() => setIsMilestoneModalOpen(false)} className="px-5 py-3 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</button>
+                                    <button type="submit" className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 shadow-md">Simpan Jadual Bayaran</button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -2515,6 +2667,55 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                                 <button onClick={() => setIsFinanceModalOpen(false)} className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-slate-200">&times;</button>
                             </div>
                             <form onSubmit={handleSaveFinance} className="p-8 space-y-5">
+                                {(() => {
+                                    const matchedMilestoneId = editingFinance?.milestone_id 
+                                        ? String(editingFinance.milestone_id) 
+                                        : (editingFinance?.linked_milestone_id 
+                                            ? String(editingFinance.linked_milestone_id) 
+                                            : (() => {
+                                                if (!editingFinance?.description) return '';
+                                                const desc = editingFinance.description.toLowerCase().trim();
+                                                const found = milestones.find(m => {
+                                                    const title = m.title.toLowerCase().trim();
+                                                    return desc.includes(title) || title.includes(desc.replace(/^tuntutan\s+/i, ''));
+                                                });
+                                                return found ? String(found.id) : '';
+                                            })());
+
+                                    return (
+                                        <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl">
+                                            <label className="block text-xs font-extrabold uppercase tracking-wider text-indigo-900 mb-1.5 flex items-center justify-between">
+                                                <span>Pilih Daripada Jadual Bayaran Projek (Pilihan Pintar)</span>
+                                                <span className="text-[11px] text-indigo-600 font-semibold lowercase">auto-isi fasa & amaun</span>
+                                            </label>
+                                            <select 
+                                                key={editingFinance ? `edit-fin-${editingFinance.id}-${matchedMilestoneId}` : 'new-fin'}
+                                                name="linked_milestone_id"
+                                                defaultValue={matchedMilestoneId}
+                                                onChange={(e) => {
+                                                    const selectedId = e.target.value;
+                                                    if (selectedId) {
+                                                        const ms = milestones.find(m => String(m.id) === String(selectedId));
+                                                        if (ms) {
+                                                            const descInput = document.querySelector('input[name="description"]');
+                                                            const amtInput = document.querySelector('input[name="amount"]');
+                                                            if (descInput) descInput.value = `Tuntutan ${ms.title}`;
+                                                            if (amtInput && ms.amount) amtInput.value = ms.amount;
+                                                        }
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl outline-none font-bold text-slate-800 text-sm focus:ring-4 focus:ring-indigo-100 cursor-pointer"
+                                            >
+                                                <option value="">-- Tiada Pautan (Tuntutan Bebas) --</option>
+                                                {milestones.map(ms => (
+                                                    <option key={ms.id} value={String(ms.id)}>
+                                                        {ms.title} - RM {ms.amount ? Number(String(ms.amount).replace(/,/g, '')).toLocaleString('en-MY', { minimumFractionDigits: 2 }) : '0.00'} [{ms.status}]
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    );
+                                })()}
                                 <div className="grid grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">No. Invois</label>
@@ -2540,9 +2741,12 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
-                                        <select name="status" defaultValue={editingFinance?.status || 'Menunggu Kelulusan'} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
+                                        <select name="status" defaultValue={editingFinance?.status || 'Menunggu'} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium">
+                                            <option value="Menunggu">Menunggu</option>
+                                            <option value="Dalam Tindakan">Dalam Tindakan</option>
                                             <option value="Selesai">Selesai</option>
                                             <option value="Menunggu Kelulusan">Menunggu Kelulusan</option>
+                                            <option value="Lewat">Lewat</option>
                                             <option value="Ditolak">Ditolak</option>
                                         </select>
                                     </div>
@@ -3202,9 +3406,9 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
                             <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
                                 <AlertTriangle className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-extrabold text-slate-900 mb-2">Padam Pencapaian (Milestone)</h3>
+                            <h3 className="text-xl font-extrabold text-slate-900 mb-2">Padam Jadual Bayaran Projek</h3>
                             <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-                                Adakah anda pasti mahu memadam pencapaian <span className="font-extrabold text-slate-900">{milestoneToDelete.title}</span>?
+                                Adakah anda pasti mahu memadam jadual bayaran <span className="font-extrabold text-slate-900">{milestoneToDelete.title}</span>?
                             </p>
                             <div className="flex space-x-3">
                                 <button
@@ -3576,7 +3780,7 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
             {/* --- TABS NAVIGATION (COMPACT 1-PAGE ZERO-SCROLL GRID) --- */}
             <div className="bg-slate-100/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 mb-5 shadow-inner w-full">
                 {[
-                    { id: 'Gambaran Keseluruhan', label: 'Gambaran Keseluruhan', icon: Activity },
+                    { id: 'Jadual Bayaran', label: 'Jadual Bayaran', icon: Wallet },
                     { id: 'Carta Gantt', label: 'Carta Gantt', icon: CalendarIcon },
                     { id: 'Tugasan (Kanban)', label: 'Tugasan (Kanban)', icon: FolderKanban },
                     { id: 'Kewangan Projek', label: 'Kewangan Projek', icon: DollarSign },
@@ -3602,37 +3806,90 @@ const ProjectDetailPage = ({ setView, project, showToastNotification, currentUse
             </div>
 
             <div className="mt-8">
-                {activeTab === 'Gambaran Keseluruhan' && (
+                {activeTab === 'Jadual Bayaran' && (
                     <div className="space-y-8">
                         <Card>
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-extrabold text-slate-900">Pencapaian (Milestones)</h3>
-                                <button onClick={() => { setEditingMilestone(null); setIsMilestoneModalOpen(true); }} className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center">
-                                    <Plus className="w-4 h-4 mr-1" /> Tambah Pencapaian
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                                <div>
+                                    <div className="flex items-center space-x-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                            <Wallet className="w-4 h-4" />
+                                        </div>
+                                        <h3 className="text-xl font-extrabold text-slate-900">Jadual Bayaran Projek</h3>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium mt-1">Perancangan fasa pembayaran awal & pemantauan tuntutan kewangan dengan amaran matang.</p>
+                                </div>
+                                <button onClick={() => { setEditingMilestone(null); setIsMilestoneModalOpen(true); }} className="text-sm font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-colors flex items-center shadow-sm">
+                                    <Plus className="w-4 h-4 mr-1.5" /> Tetapkan Jadual Bayaran
                                 </button>
                             </div>
 
                             <div className="space-y-6 relative before:absolute before:inset-0 before:ml-3 md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-                                {milestones.length > 0 ? milestones.map((ms, i) => (
-                                    <div key={ms.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full border-[3px] border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm ${ms.status === 'Selesai' ? 'bg-emerald-500' : ms.status === 'Aktif' ? 'bg-indigo-500' : 'bg-slate-200'}`}>
-                                            {ms.status === 'Selesai' && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                                        </div>
-                                        <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-md transition-all relative">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-bold text-slate-900 truncate pr-4">{ms.title}</h4>
-                                                <Badge text={ms.status} />
-                                            </div>
-                                            <p className="text-sm font-semibold text-slate-500">Sasaran: {ms.target}</p>
+                                {milestones.length > 0 ? milestones.map((ms, i) => {
+                                    let diffDays = null;
+                                    if (ms.targetDate) {
+                                        try {
+                                            const targetD = new Date(ms.targetDate);
+                                            const todayD = new Date();
+                                            todayD.setHours(0, 0, 0, 0);
+                                            targetD.setHours(0, 0, 0, 0);
+                                            diffDays = Math.ceil((targetD - todayD) / (1000 * 60 * 60 * 24));
+                                        } catch (e) {
+                                            diffDays = null;
+                                        }
+                                    }
 
-                                            <div className="absolute bottom-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => { setEditingMilestone(ms); setIsMilestoneModalOpen(true); }} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 shadow-sm" title="Kemaskini Pencapaian"><Edit className="w-3.5 h-3.5" /></button>
-                                                <button onClick={() => setMilestoneToDelete(ms)} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-rose-600 hover:border-rose-200 transition-colors shadow-sm" title="Padam Pencapaian"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    return (
+                                        <div key={ms.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                            <div className={`flex items-center justify-center w-7 h-7 rounded-full border-[3px] border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm ${ms.status === 'Selesai' ? 'bg-emerald-500' : ms.status === 'Lewat' || (diffDays !== null && diffDays < 0) ? 'bg-rose-500' : (diffDays !== null && diffDays <= 30) ? 'bg-amber-500' : 'bg-indigo-500'}`}>
+                                                {ms.status === 'Selesai' ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : <Clock className="w-3.5 h-3.5 text-white" />}
+                                            </div>
+                                            <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-md transition-all relative">
+                                                <div className="flex justify-between items-start mb-2 gap-2">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900 pr-2">{ms.title}</h4>
+                                                        <div className="text-base font-extrabold text-indigo-700 mt-0.5">
+                                                            RM {ms.amount ? Number(String(ms.amount).replace(/,/g, '')).toLocaleString('en-MY', { minimumFractionDigits: 2 }) : '0.00'}
+                                                        </div>
+                                                    </div>
+                                                    <Badge text={ms.status} />
+                                                </div>
+                                                
+                                                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-200/60 text-xs">
+                                                    <span className="font-medium text-slate-500">
+                                                        Sasaran: <strong className="text-slate-700">{ms.targetDate ? formatDateMalay(ms.targetDate) : ms.target}</strong>
+                                                    </span>
+
+                                                    {ms.status === 'Selesai' ? (
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                                                            ✓ Selesai Dibayar
+                                                        </span>
+                                                    ) : diffDays !== null ? (
+                                                        diffDays < 0 ? (
+                                                            <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold animate-pulse">
+                                                                ⚠ Lewat: {Math.abs(diffDays)} Hari Melepasi Tarikh
+                                                            </span>
+                                                        ) : diffDays <= 30 ? (
+                                                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+                                                                🔔 Amaran Awal: {diffDays} Hari Lagi
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                                                                ⏱ Baki {diffDays} Hari
+                                                            </span>
+                                                        )
+                                                    ) : null}
+                                                </div>
+
+                                                <div className="absolute bottom-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingMilestone(ms); setIsMilestoneModalOpen(true); }} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 shadow-sm" title="Kemaskini Jadual Bayaran"><Edit className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => setMilestoneToDelete(ms)} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-rose-600 hover:border-rose-200 transition-colors shadow-sm" title="Padam Jadual Bayaran"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )) : (
-                                    <div className="text-center py-8 text-slate-400 font-medium">Tiada pencapaian direkodkan.</div>
+                                    );
+                                }) : (
+                                    <div className="text-center py-8 text-slate-400 font-medium">Tiada jadual bayaran direkodkan. Sila tetapkan jadual bayaran awal projek.</div>
                                 )}
                             </div>
                         </Card>
@@ -5738,7 +5995,8 @@ const AuditTrailPage = ({ currentUser, showToastNotification }) => {
     );
 };
 
-const SettingsPage = ({ showToastNotification }) => {
+const SettingsPage = ({ showToastNotification, currentUser, refreshNotifications }) => {
+    const [activeSettingsTab, setActiveSettingsTab] = useState('divisions'); // 'divisions', 'smtp', 'alerts'
     const [divisions, setDivisions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -5758,6 +6016,30 @@ const SettingsPage = ({ showToastNotification }) => {
     const [unitName, setUnitName] = useState('');
     const [unitDesc, setUnitDesc] = useState('');
 
+    // SMTP Configuration States
+    const [smtpHost, setSmtpHost] = useState('smtp.kehakiman.gov.my');
+    const [smtpPort, setSmtpPort] = useState(587);
+    const [smtpEncryption, setSmtpEncryption] = useState('tls');
+    const [smtpUser, setSmtpUser] = useState('pmo@kehakiman.gov.my');
+    const [smtpPass, setSmtpPass] = useState('');
+    const [showSmtpPass, setShowSmtpPass] = useState(false);
+    const [fromEmail, setFromEmail] = useState('noreply-mypmo@kehakiman.gov.my');
+    const [fromName, setFromName] = useState('Sistem MY-PMO PKPMP');
+    const [isActiveSmtp, setIsActiveSmtp] = useState(true);
+    const [notifyOnRisk, setNotifyOnRisk] = useState(true);
+    const [notifyOnOverdue, setNotifyOnOverdue] = useState(true);
+    const [notifyOnPayment, setNotifyOnPayment] = useState(true);
+    const [testEmail, setTestEmail] = useState(currentUser?.email || 'admin@kehakiman.gov.my');
+    const [isLoadingSmtp, setIsLoadingSmtp] = useState(false);
+    const [isSavingSmtp, setIsSavingSmtp] = useState(false);
+    const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+    const [smtpTestResult, setSmtpTestResult] = useState(null);
+
+    // Auto-Alert Monitoring States
+    const [alertStats, setAlertStats] = useState({ unread: 0, critical: 0, warning: 0, total: 0 });
+    const [activeAlerts, setActiveAlerts] = useState([]);
+    const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+
     const fetchDivisions = async () => {
         setIsLoading(true);
         try {
@@ -5773,9 +6055,125 @@ const SettingsPage = ({ showToastNotification }) => {
         }
     };
 
+    const fetchSmtpSettings = async () => {
+        setIsLoadingSmtp(true);
+        try {
+            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php');
+            const data = await res.json();
+            if (data.status === 'success' && data.data) {
+                const s = data.data;
+                setSmtpHost(s.smtp_host || 'smtp.kehakiman.gov.my');
+                setSmtpPort(s.smtp_port || 587);
+                setSmtpEncryption(s.smtp_encryption || 'tls');
+                setSmtpUser(s.smtp_user || '');
+                setSmtpPass(s.smtp_pass || '');
+                setFromEmail(s.from_email || 'noreply-mypmo@kehakiman.gov.my');
+                setFromName(s.from_name || 'Sistem MY-PMO PKPMP');
+                setIsActiveSmtp(s.is_active == 1);
+                setNotifyOnRisk(s.notify_on_risk == 1);
+                setNotifyOnOverdue(s.notify_on_overdue_task == 1);
+                setNotifyOnPayment(s.notify_on_payment_due == 1);
+            }
+        } catch (err) {
+            console.error('Ralat mengambil tetapan SMTP:', err);
+        } finally {
+            setIsLoadingSmtp(false);
+        }
+    };
+
+    const fetchAlertsSummary = async () => {
+        setIsLoadingAlerts(true);
+        try {
+            const res = await fetch('http://localhost/My-PMO/api/modules/notifications.php');
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (data.counts) setAlertStats(data.counts);
+                if (data.data) setActiveAlerts(data.data);
+            }
+        } catch (err) {
+            console.error('Ralat mengambil amaran pintar:', err);
+        } finally {
+            setIsLoadingAlerts(false);
+        }
+    };
+
     useEffect(() => {
         fetchDivisions();
+        fetchSmtpSettings();
+        fetchAlertsSummary();
     }, []);
+
+    const handleSaveSmtp = async (e) => {
+        if (e) e.preventDefault();
+        setIsSavingSmtp(true);
+        try {
+            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'save_settings',
+                    smtp_host: smtpHost,
+                    smtp_port: smtpPort,
+                    smtp_encryption: smtpEncryption,
+                    smtp_user: smtpUser,
+                    smtp_pass: smtpPass,
+                    from_email: fromEmail,
+                    from_name: fromName,
+                    is_active: isActiveSmtp ? 1 : 0,
+                    notify_on_risk: notifyOnRisk ? 1 : 0,
+                    notify_on_overdue_task: notifyOnOverdue ? 1 : 0,
+                    notify_on_payment_due: notifyOnPayment ? 1 : 0,
+                    user_id: currentUser?.id || 1
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (showToastNotification) showToastNotification('Konfigurasi pelayan SMTP berjaya disimpan!');
+                fetchSmtpSettings();
+                if (refreshNotifications) refreshNotifications();
+            } else {
+                alert(data.message || 'Gagal menyimpan tetapan SMTP.');
+            }
+        } catch (err) {
+            alert('Ralat semasa berhubung dengan pelayan.');
+        } finally {
+            setIsSavingSmtp(false);
+        }
+    };
+
+    const handleTestSmtp = async () => {
+        setIsTestingSmtp(true);
+        setSmtpTestResult(null);
+        try {
+            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'test_connection',
+                    smtp_host: smtpHost,
+                    smtp_port: smtpPort,
+                    smtp_encryption: smtpEncryption,
+                    smtp_user: smtpUser,
+                    smtp_pass: smtpPass,
+                    from_email: fromEmail,
+                    test_email: testEmail,
+                    user_id: currentUser?.id || 1
+                })
+            });
+            const data = await res.json();
+            setSmtpTestResult(data);
+            if (data.status === 'success') {
+                if (showToastNotification) showToastNotification('Ujian sambungan SMTP berjaya!');
+            }
+        } catch (err) {
+            setSmtpTestResult({
+                status: 'error',
+                message: 'Gagal membuat permintaan ujian ke pelayan API.'
+            });
+        } finally {
+            setIsTestingSmtp(false);
+        }
+    };
 
     const handleCreateDivision = async (e) => {
         e.preventDefault();
@@ -5909,142 +6307,549 @@ const SettingsPage = ({ showToastNotification }) => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tetapan Sistem</h1>
-                    <p className="text-slate-500 text-sm mt-1">Urus senarai bahagian dan Unit di PKPMP.</p>
+                    <p className="text-slate-500 text-sm mt-1">Konfigurasi organisasi bahagian, integrasi pelayan e-mel SMTP, dan peraturan notifikasi pintar PKPMP.</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                            <Folder className="w-5 h-5 mr-2 text-indigo-600" />
-                            Pengurusan Bahagian & Unit PKPMP
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-1">Senarai Bahagian rasmi dan Unit-unit di bawah pentadbiran PKPMP.</p>
-                    </div>
-                    <button
-                        onClick={() => {
-                            setFormCode('');
-                            setFormName('');
-                            setFormDesc('');
-                            setIsAddModalOpen(true);
-                        }}
-                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center shrink-0 cursor-pointer"
-                    >
-                        <Plus className="w-4 h-4 mr-1.5" /> Tambah Bahagian
-                    </button>
-                </div>
+            {/* Tab Bar Navigasi Tetapan */}
+            <div className="flex border-b border-slate-200 gap-6">
+                <button
+                    type="button"
+                    onClick={() => setActiveSettingsTab('divisions')}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'divisions' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                >
+                    <Folder className="w-4 h-4" /> Bahagian & Unit
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveSettingsTab('smtp')}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'smtp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                >
+                    <Mail className="w-4 h-4" /> Konfigurasi E-mel (SMTP)
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveSettingsTab('alerts')}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'alerts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                >
+                    <Bell className="w-4 h-4" /> Peraturan Notifikasi Pintar (Auto-Alert)
+                </button>
+            </div>
 
-                <div className="mt-6 space-y-4">
-                    {divisions.length > 0 ? (
-                        divisions.map((div) => (
-                            <div key={div.id} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md hover:border-indigo-200 transition-all">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
-                                    <div className="flex items-center space-x-3">
-                                        <span className="text-xs font-black px-3 py-1 rounded-lg bg-indigo-600 text-white shadow-sm">
-                                            {div.code}
-                                        </span>
-                                        <div>
-                                            <h3 className="text-sm font-extrabold text-slate-900">{div.name}</h3>
-                                            {div.description && <p className="text-xs text-slate-500 mt-0.5">{div.description}</p>}
+            {/* TAB 1: BAHAGIAN & UNIT */}
+            {activeSettingsTab === 'divisions' && (
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                                <Folder className="w-5 h-5 mr-2 text-indigo-600" />
+                                Pengurusan Bahagian & Unit PKPMP
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">Senarai Bahagian rasmi dan Unit-unit di bawah pentadbiran PKPMP.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setFormCode('');
+                                setFormName('');
+                                setFormDesc('');
+                                setIsAddModalOpen(true);
+                            }}
+                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center shrink-0 cursor-pointer"
+                        >
+                            <Plus className="w-4 h-4 mr-1.5" /> Tambah Bahagian
+                        </button>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                        {divisions.length > 0 ? (
+                            divisions.map((div) => (
+                                <div key={div.id} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md hover:border-indigo-200 transition-all">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-xs font-black px-3 py-1 rounded-lg bg-indigo-600 text-white shadow-sm">
+                                                {div.code}
+                                            </span>
+                                            <div>
+                                                <h3 className="text-sm font-extrabold text-slate-900">{div.name}</h3>
+                                                {div.description && <p className="text-xs text-slate-500 mt-0.5">{div.description}</p>}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => {
+                                                    setTargetDivisionId(div.id);
+                                                    setUnitCode('');
+                                                    setUnitName('');
+                                                    setUnitDesc('');
+                                                    setIsAddUnitModalOpen(true);
+                                                }}
+                                                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors flex items-center cursor-pointer border border-emerald-200/60"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Unit
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedDivision(div);
+                                                    setFormCode(div.code);
+                                                    setFormName(div.name);
+                                                    setFormDesc(div.description || '');
+                                                    setIsEditModalOpen(true);
+                                                }}
+                                                className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
+                                                title="Edit Bahagian"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteDivision(div.id, div.name)}
+                                                className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
+                                                title="Padam Bahagian"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={() => {
-                                                setTargetDivisionId(div.id);
-                                                setUnitCode('');
-                                                setUnitName('');
-                                                setUnitDesc('');
-                                                setIsAddUnitModalOpen(true);
-                                            }}
-                                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors flex items-center cursor-pointer border border-emerald-200/60"
-                                        >
-                                            <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Unit
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedDivision(div);
-                                                setFormCode(div.code);
-                                                setFormName(div.name);
-                                                setFormDesc(div.description || '');
-                                                setIsEditModalOpen(true);
-                                            }}
-                                            className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
-                                            title="Edit Bahagian"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteDivision(div.id, div.name)}
-                                            className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
-                                            title="Padam Bahagian"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+
+                                    {/* Senarai Unit di Bawah Bahagian */}
+                                    <div className="mt-3">
+                                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center">
+                                            <span>Unit di bawah {div.code} ({div.units ? div.units.length : 0})</span>
+                                        </div>
+
+                                        {div.units && div.units.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                {div.units.map((unit) => (
+                                                    <div key={unit.id} className="p-2.5 rounded-xl bg-white border border-slate-200/70 flex items-center justify-between group hover:border-indigo-300 transition-all">
+                                                        <div className="truncate pr-2">
+                                                            <div className="flex items-center space-x-1.5">
+                                                                {unit.code && (
+                                                                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                                                                        {unit.code}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-xs font-bold text-slate-800 truncate" title={unit.name}>
+                                                                    {unit.name}
+                                                                </span>
+                                                            </div>
+                                                            {unit.description && <p className="text-[10px] text-slate-400 truncate mt-0.5">{unit.description}</p>}
+                                                        </div>
+                                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedUnit(unit);
+                                                                    setTargetDivisionId(div.id);
+                                                                    setUnitCode(unit.code || '');
+                                                                    setUnitName(unit.name);
+                                                                    setUnitDesc(unit.description || '');
+                                                                    setIsEditUnitModalOpen(true);
+                                                                }}
+                                                                className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
+                                                            >
+                                                                <Edit className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteUnit(unit.id, unit.name)}
+                                                                className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-slate-400 italic">Tiada unit berdaftar di bawah bahagian ini.</p>
+                                        )}
                                     </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="py-12 text-center text-slate-400 italic">
+                                {isLoading ? 'Memuatkan data bahagian & unit...' : 'Tiada bahagian berdaftar.'}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
-                                {/* Senarai Unit di Bawah Bahagian */}
-                                <div className="mt-3">
-                                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center">
-                                        <span>Unit di bawah {div.code} ({div.units ? div.units.length : 0})</span>
+            {/* TAB 2: KONFIGURASI E-MEL SMTP */}
+            {activeSettingsTab === 'smtp' && (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-3xl border border-slate-100 p-6 lg:p-8 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <Mail className="w-5 h-5 text-indigo-600" />
+                                    Konfigurasi Pelayan E-mel (SMTP)
+                                </h2>
+                                <p className="text-xs text-slate-500 mt-1">Konfigurasikan maklumat pelayan SMTP untuk penghantaran e-mel amaran dan notifikasi sistem.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${isActiveSmtp ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                    <span className={`w-2 h-2 rounded-full ${isActiveSmtp ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                                    {isActiveSmtp ? 'Perkhidmatan E-mel Aktif' : 'Perkhidmatan Dinyahaktifkan'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSaveSmtp} className="mt-6 space-y-6">
+                            {/* Suis Status Servis */}
+                            <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-extrabold text-indigo-950">Pengaktifan E-mel Sistem</p>
+                                    <p className="text-xs text-indigo-700 mt-0.5">Benarkan sistem menghantar e-mel amaran automatik bagi projek dan kewangan.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isActiveSmtp}
+                                        onChange={(e) => setIsActiveSmtp(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Pelayan Hos SMTP (SMTP Host) *</label>
+                                    <div className="relative">
+                                        <Server className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={smtpHost}
+                                            onChange={(e) => setSmtpHost(e.target.value)}
+                                            placeholder="cth: smtp.kehakiman.gov.my atau smtp.gmail.com"
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                        />
                                     </div>
+                                    <p className="text-[11px] text-slate-400 mt-1">Contoh: `smtp.kehakiman.gov.my`, `smtp.office365.com`</p>
+                                </div>
 
-                                    {div.units && div.units.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                            {div.units.map((unit) => (
-                                                <div key={unit.id} className="p-2.5 rounded-xl bg-white border border-slate-200/70 flex items-center justify-between group hover:border-indigo-300 transition-all">
-                                                    <div className="truncate pr-2">
-                                                        <div className="flex items-center space-x-1.5">
-                                                            {unit.code && (
-                                                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                                                                    {unit.code}
-                                                                </span>
-                                                            )}
-                                                            <span className="text-xs font-bold text-slate-800 truncate" title={unit.name}>
-                                                                {unit.name}
-                                                            </span>
-                                                        </div>
-                                                        {unit.description && <p className="text-[10px] text-slate-400 truncate mt-0.5">{unit.description}</p>}
-                                                    </div>
-                                                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUnit(unit);
-                                                                setTargetDivisionId(div.id);
-                                                                setUnitCode(unit.code || '');
-                                                                setUnitName(unit.name);
-                                                                setUnitDesc(unit.description || '');
-                                                                setIsEditUnitModalOpen(true);
-                                                            }}
-                                                            className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
-                                                        >
-                                                            <Edit className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteUnit(unit.id, unit.name)}
-                                                            className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-slate-400 italic">Tiada unit berdaftar di bawah bahagian ini.</p>
-                                    )}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Port SMTP *</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={smtpPort}
+                                        onChange={(e) => setSmtpPort(Number(e.target.value))}
+                                        placeholder="587"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
+                                    <p className="text-[11px] text-slate-400 mt-1">Kebiasaannya 587 (TLS), 465 (SSL), atau 25 (Standard)</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Kaedah Enkripsi (Encryption)</label>
+                                    <select
+                                        value={smtpEncryption}
+                                        onChange={(e) => setSmtpEncryption(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500 bg-white"
+                                    >
+                                        <option value="tls">TLS (STARTTLS - Disyorkan)</option>
+                                        <option value="ssl">SSL (SMTPS - Port 465)</option>
+                                        <option value="none">Tiada Enkripsi (None)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Nama Pengguna / E-mel SMTP</label>
+                                    <input
+                                        type="text"
+                                        value={smtpUser}
+                                        onChange={(e) => setSmtpUser(e.target.value)}
+                                        placeholder="pmo@kehakiman.gov.my"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Kata Laluan SMTP</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showSmtpPass ? "text" : "password"}
+                                            value={smtpPass}
+                                            onChange={(e) => setSmtpPass(e.target.value)}
+                                            placeholder="Masukkan kata laluan pelayan e-mel"
+                                            className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowSmtpPass(!showSmtpPass)}
+                                            className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        >
+                                            {showSmtpPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-1">Biarkan kosong atau bertopeng sekiranya tidak mahu menukar kata laluan sedia ada.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">E-mel Pengirim (From Email) *</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={fromEmail}
+                                        onChange={(e) => setFromEmail(e.target.value)}
+                                        placeholder="noreply-mypmo@kehakiman.gov.my"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Nama Paparan Pengirim (From Name) *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={fromName}
+                                        onChange={(e) => setFromName(e.target.value)}
+                                        placeholder="Sistem MY-PMO PKPMP"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="py-12 text-center text-slate-400 italic">
-                            {isLoading ? 'Memuatkan data bahagian & unit...' : 'Tiada bahagian berdaftar.'}
+
+                            <div className="flex justify-end pt-4 border-t border-slate-100">
+                                <button
+                                    type="submit"
+                                    disabled={isSavingSmtp}
+                                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {isSavingSmtp ? 'Menyimpan...' : 'Simpan Konfigurasi SMTP'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Kad Ujian Sambungan SMTP */}
+                    <div className="bg-white rounded-3xl border border-slate-100 p-6 lg:p-8 shadow-sm">
+                        <div className="pb-4 border-b border-slate-100">
+                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <Send className="w-4 h-4 text-emerald-600" />
+                                Ujian Diagnostik Sambungan SMTP
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Uji kebolehsambungan soket dan protokol ke pelayan SMTP secara langsung sebelum digunakan.</p>
                         </div>
-                    )}
+
+                        <div className="mt-4 flex flex-col sm:flex-row items-end gap-3">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">E-mel Penerima Ujian</label>
+                                <input
+                                    type="email"
+                                    value={testEmail}
+                                    onChange={(e) => setTestEmail(e.target.value)}
+                                    placeholder="admin@kehakiman.gov.my"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleTestSmtp}
+                                disabled={isTestingSmtp}
+                                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+                            >
+                                {isTestingSmtp ? (
+                                    <>
+                                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Menguji Sambungan...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-3.5 h-3.5" /> Uji Sambungan Pelayan
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {smtpTestResult && (
+                            <div className={`mt-4 p-4 rounded-2xl border text-xs font-medium ${smtpTestResult.status === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                                <div className="flex items-start gap-2.5">
+                                    {smtpTestResult.status === 'success' ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                    ) : (
+                                        <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                    )}
+                                    <div>
+                                        <p className="font-bold text-sm mb-1">{smtpTestResult.status === 'success' ? 'Sambungan Berjaya' : 'Sambungan Gagal'}</p>
+                                        <p className="leading-relaxed">{smtpTestResult.message}</p>
+                                        {smtpTestResult.details && (
+                                            <div className="mt-2 text-[11px] opacity-85 font-mono">
+                                                Pelayan: {smtpTestResult.details.host}:{smtpTestResult.details.port} ({smtpTestResult.details.encryption})
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* TAB 3: PERATURAN NOTIFIKASI PINTAR (AUTO-ALERT) */}
+            {activeSettingsTab === 'alerts' && (
+                <div className="space-y-6">
+                    {/* Ringkasan Metrik Amaran */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">
+                                <Bell className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{alertStats.total || activeAlerts.length}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Jumlah Notifikasi</p>
+                            </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-black">
+                                <AlertTriangle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-rose-600">{alertStats.critical || 0}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Amaran Kritikal</p>
+                            </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black">
+                                <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-amber-600">{alertStats.warning || 0}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Peringatan Awal</p>
+                            </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
+                                <ShieldCheck className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{alertStats.unread || 0}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Belum Dibaca</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Peraturan Suis Auto-Alert */}
+                    <div className="bg-white rounded-3xl border border-slate-100 p-6 lg:p-8 shadow-sm">
+                        <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <Bell className="w-5 h-5 text-indigo-600" />
+                                    Peraturan Amaran Automatik (Auto-Alert Rules)
+                                </h2>
+                                <p className="text-xs text-slate-500 mt-1">Konfigurasikan keadaan di mana sistem akan menjana amaran pintar secara automatik ke papan pemuka dan e-mel.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { fetchAlertsSummary(); if (refreshNotifications) refreshNotifications(); }}
+                                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAlerts ? 'animate-spin' : ''}`} /> Imbas Semula Amaran
+                            </button>
+                        </div>
+
+                        <div className="mt-6 space-y-4">
+                            {/* Rule 1 */}
+                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between hover:bg-white transition-all">
+                                <div className="pr-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                        <h4 className="text-sm font-extrabold text-slate-900">Amaran Projek Berisiko & Tertunda</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Jana amaran segera apabila projek ditandakan sebagai 'Berisiko' atau 'Amaran', atau apabila kemajuan projek berada di bawah 40%.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={notifyOnRisk}
+                                        onChange={(e) => { setNotifyOnRisk(e.target.checked); handleSaveSmtp(); }}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            {/* Rule 2 */}
+                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between hover:bg-white transition-all">
+                                <div className="pr-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                        <h4 className="text-sm font-extrabold text-slate-900">Peringatan Jadual Bayaran & Milestone</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Peringatan awal automatik 30 hari sebelum tarikh matang sasaran bayaran fasa projek dan amaran lewat jika tarikh terlepas.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={notifyOnPayment}
+                                        onChange={(e) => { setNotifyOnPayment(e.target.checked); handleSaveSmtp(); }}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            {/* Rule 3 */}
+                            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between hover:bg-white transition-all">
+                                <div className="pr-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                        <h4 className="text-sm font-extrabold text-slate-900">Amaran Tugasan Kanban Melepasi Tarikh Akhir (Overdue)</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Keluarkan amaran bagi tugasan kanban yang masih pending atau in_progress setelah melepasi due date yang ditetapkan.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={notifyOnOverdue}
+                                        onChange={(e) => { setNotifyOnOverdue(e.target.checked); handleSaveSmtp(); }}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Senarai Amaran Langsung */}
+                    <div className="bg-white rounded-3xl border border-slate-100 p-6 lg:p-8 shadow-sm">
+                        <div className="pb-4 border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Senarai Amaran Pintar Aktif Masa Nyata</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Pengesanan amaran semasa yang dianalisis oleh enjin sistem.</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                            {activeAlerts.length > 0 ? (
+                                activeAlerts.map(alert => (
+                                    <div key={alert.id} className={`p-4 rounded-2xl border transition-all ${alert.type === 'danger' ? 'bg-rose-50/50 border-rose-200/70' : alert.type === 'warning' ? 'bg-amber-50/50 border-amber-200/70' : 'bg-slate-50 border-slate-200/70'}`}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start space-x-3">
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${alert.type === 'danger' ? 'bg-rose-500 text-white' : alert.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-indigo-500 text-white'}`}>
+                                                    {alert.type === 'danger' ? <AlertCircle className="w-4 h-4" /> : alert.type === 'warning' ? <Clock className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-slate-900">{alert.title}</h4>
+                                                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{alert.message}</p>
+                                                    <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wider">{alert.time}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="py-8 text-center text-slate-400 text-xs font-medium">
+                                    Tiada amaran pintar aktif buat masa ini. Semua metrik projek dalam keadaan optimum.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Tambah Bahagian */}
             {isAddModalOpen && (
@@ -7133,8 +7938,43 @@ export default function App() {
         setTimeout(() => setToastMsg(''), 3000);
     };
 
-    const markAllRead = () => setNotifications(notifications.map(n => ({ ...n, unread: false })));
-    const markAsRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+    const markAllRead = async () => {
+        setNotifications(notifications.map(n => ({ ...n, unread: false })));
+        try {
+            await fetch('http://localhost/My-PMO/api/modules/notifications.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'mark_as_read', id: 'all' })
+            });
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    const markAsRead = async (id) => {
+        setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+        try {
+            await fetch('http://localhost/My-PMO/api/modules/notifications.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'mark_as_read', id })
+            });
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    const handleNotificationClick = (n) => {
+        markAsRead(n.id);
+        if (n.project_id) {
+            const targetP = projectsList.find(p => p.id == n.project_id || p.project_code == n.project_id);
+            if (targetP) {
+                setSelectedProject(targetP);
+                setCurrentView('project_detail');
+                setShowNotif(false);
+            }
+        }
+    };
 
     const handleLoginSuccess = (user) => {
         const userObj = user || MOCK_USER;
@@ -7283,7 +8123,7 @@ export default function App() {
             case 'users': return <UsersPage />;
             case 'audit': return <AuditTrailPage currentUser={currentUser} showToastNotification={showToastNotification} />;
             case 'backup': return <BackupPage showToastNotification={showToastNotification} currentUser={currentUser} />;
-            case 'settings': return <SettingsPage showToastNotification={showToastNotification} />;
+            case 'settings': return <SettingsPage showToastNotification={showToastNotification} currentUser={currentUser} refreshNotifications={fetchNotifications} />;
             default: return <DashboardPage setView={setCurrentView} showToastNotification={showToastNotification} projects={visibleProjectsList} />;
         }
     };
@@ -7400,32 +8240,75 @@ export default function App() {
 
                     <div className="flex items-center space-x-3 sm:space-x-4">
                         <div className="relative">
-                            <button onClick={() => { setShowNotif(!showNotif); setShowSettings(false); }} className="w-10 h-10 flex items-center justify-center border rounded-full transition-all shadow-sm relative focus:ring-2 focus:ring-indigo-100 bg-white border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50">
+                            <button onClick={() => { setShowNotif(!showNotif); setShowSettings(false); }} className="w-10 h-10 flex items-center justify-center border rounded-full transition-all shadow-sm relative focus:ring-2 focus:ring-indigo-100 bg-white border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 cursor-pointer">
                                 <Bell className="w-5 h-5" />
-                                {unreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse"></span>}
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 min-w-[18px] text-[10px] font-black bg-rose-500 text-white rounded-full ring-2 ring-white flex items-center justify-center animate-pulse shadow-sm">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
                             </button>
                             {showNotif && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowNotif(false)} />
-                                    <div className="absolute right-0 mt-3 w-80 rounded-2xl shadow-xl border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 bg-white border-slate-100 text-slate-900">
-                                        <div className="p-4 border-b flex justify-between items-center border-slate-100 bg-slate-50">
-                                            <span className="font-extrabold">Pusat Notifikasi</span>
-                                            {unreadCount > 0 && (
-                                                <span onClick={markAllRead} className="text-xs text-indigo-500 font-bold cursor-pointer hover:underline">Tanda Dibaca Semua</span>
-                                            )}
+                                    <div className="absolute right-0 mt-3 w-88 sm:w-96 rounded-3xl shadow-2xl border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 bg-white border-slate-100 text-slate-900">
+                                        <div className="p-4 border-b flex justify-between items-center border-slate-100 bg-slate-50/80">
+                                            <div className="flex items-center gap-2">
+                                                <Bell className="w-4 h-4 text-indigo-600" />
+                                                <span className="font-extrabold text-sm text-slate-900">Pusat Amaran Pintar</span>
+                                                {unreadCount > 0 && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700">
+                                                        {unreadCount} Baharu
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => fetchNotifications()}
+                                                    className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+                                                    title="Segar Semula Notifikasi"
+                                                >
+                                                    <RefreshCw className="w-3.5 h-3.5" />
+                                                </button>
+                                                {unreadCount > 0 && (
+                                                    <button onClick={markAllRead} className="text-xs text-indigo-600 font-bold hover:underline cursor-pointer">
+                                                        Tanda Semua
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="max-h-80 overflow-y-auto">
+                                        <div className="max-h-96 overflow-y-auto divide-y divide-slate-50">
                                             {notifications.length > 0 ? notifications.map(n => (
-                                                <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-4 border-b cursor-pointer transition-colors border-slate-50 hover:bg-slate-50 ${n.unread ? 'bg-indigo-500/10 border-l-4 border-l-indigo-500' : 'border-l-4 border-l-transparent'}`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <p className="text-sm font-bold text-slate-800">{n.title}</p>
-                                                        {n.unread && <span className="w-2 h-2 bg-indigo-500 rounded-full mt-1.5"></span>}
+                                                <div
+                                                    key={n.id}
+                                                    onClick={() => handleNotificationClick(n)}
+                                                    className={`p-4 cursor-pointer transition-all hover:bg-slate-50/80 ${n.unread ? (n.type === 'danger' ? 'bg-rose-50/40 border-l-4 border-l-rose-500' : n.type === 'warning' ? 'bg-amber-50/40 border-l-4 border-l-amber-500' : 'bg-indigo-50/40 border-l-4 border-l-indigo-500') : 'border-l-4 border-l-transparent opacity-85'}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${n.type === 'danger' ? 'bg-rose-100 text-rose-700' : n.type === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                            {n.type === 'danger' ? <AlertCircle className="w-3.5 h-3.5" /> : n.type === 'warning' ? <Clock className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <p className="text-xs font-bold text-slate-900 truncate">{n.title}</p>
+                                                                {n.unread && <span className="w-2 h-2 bg-indigo-600 rounded-full shrink-0"></span>}
+                                                            </div>
+                                                            <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{n.message}</p>
+                                                            <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100/60">
+                                                                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">{n.time}</span>
+                                                                {n.project_id && (
+                                                                    <span className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center">
+                                                                        Buka Projek &rarr;
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs font-semibold mt-1.5 leading-relaxed text-slate-500">{n.message}</p>
-                                                    <p className="text-[10px] text-slate-400 mt-2 font-extrabold tracking-widest uppercase">{n.time}</p>
                                                 </div>
                                             )) : (
-                                                <div className="p-8 text-center text-slate-400 text-sm font-medium">Tiada notifikasi baharu.</div>
+                                                <div className="p-8 text-center text-slate-400 text-xs font-medium">
+                                                    Tiada notifikasi baharu buat masa ini.
+                                                </div>
                                             )}
                                         </div>
                                     </div>

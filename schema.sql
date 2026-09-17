@@ -121,10 +121,46 @@ CREATE TABLE IF NOT EXISTS `backup_logs` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `smtp_settings` (
+  `id` INT PRIMARY KEY DEFAULT 1,
+  `smtp_host` VARCHAR(255) NOT NULL DEFAULT 'smtp.kehakiman.gov.my',
+  `smtp_port` INT NOT NULL DEFAULT 587,
+  `smtp_encryption` ENUM('tls', 'ssl', 'none') DEFAULT 'tls',
+  `smtp_user` VARCHAR(150) DEFAULT 'pmo@kehakiman.gov.my',
+  `smtp_pass` VARCHAR(255) DEFAULT '',
+  `from_email` VARCHAR(150) NOT NULL DEFAULT 'noreply-mypmo@kehakiman.gov.my',
+  `from_name` VARCHAR(100) NOT NULL DEFAULT 'Sistem MY-PMO PKPMP',
+  `is_active` TINYINT(1) DEFAULT 1,
+  `notify_on_risk` TINYINT(1) DEFAULT 1,
+  `notify_on_overdue_task` TINYINT(1) DEFAULT 1,
+  `notify_on_payment_due` TINYINT(1) DEFAULT 1,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `smtp_settings` (`id`, `smtp_host`, `smtp_port`, `smtp_encryption`, `smtp_user`, `from_email`, `from_name`, `is_active`) 
+VALUES (1, 'smtp.kehakiman.gov.my', 587, 'tls', 'pmo@kehakiman.gov.my', 'noreply-mypmo@kehakiman.gov.my', 'Sistem MY-PMO PKPMP', 1);
+
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT DEFAULT NULL,
+  `project_id` INT DEFAULT NULL,
+  `type` ENUM('danger', 'warning', 'info', 'success') DEFAULT 'info',
+  `category` VARCHAR(50) NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `message` TEXT NOT NULL,
+  `link_view` VARCHAR(100) DEFAULT 'dashboard',
+  `is_read` TINYINT(1) DEFAULT 0,
+  `email_sent` TINYINT(1) DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- SEED DATA (PKPMP Exclusively)
 INSERT IGNORE INTO `users` (`id`, `name`, `email`, `password`, `role`, `agency`) VALUES
 (1, 'Datuk Dr. Azman', 'admin@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'superadmin', 'PKPMP'),
 (2, 'Ahmad Faiz', 'faiz@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'pmo_gov', 'PKPMP'),
 (3, 'Sarah Lee', 'sarah@kehakiman.gov.my', '$2y$10$LNWzN8f6h4h3yTEL.r8lZ.51PrMWcnEyYt7GUM2Nd9l/t3XEQe2ZC', 'admin_agency', 'PKPMP');
+
 
 

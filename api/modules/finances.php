@@ -4,11 +4,17 @@ require_once '../functions/cors.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Ensure type column exists
+// Ensure type and milestone_id columns exist
 try {
     $pdo->exec("ALTER TABLE finances ADD COLUMN type VARCHAR(50) DEFAULT 'Invois'");
 } catch (\Exception $e) {
     // Column already exists
+}
+
+try {
+    $pdo->exec("ALTER TABLE finances MODIFY COLUMN milestone_id VARCHAR(100) NULL");
+} catch (\Exception $e) {
+    // Column already exists or modified
 }
 
 // Handle GET request
@@ -41,9 +47,10 @@ if ($method === 'POST') {
     $description = $input['description'] ?? '';
     $vendor = $input['vendor'] ?? '';
     $amount = $input['amount'] ?? 0;
-    $status = $input['status'] ?? 'Menunggu Kelulusan';
+    $status = $input['status'] ?? 'Menunggu';
     $type = $input['type'] ?? ($input['status'] === 'Denda SLA' ? 'Denda' : 'Invois');
     $date = $input['date'] ?? null;
+    $milestone_id = isset($input['milestone_id']) && $input['milestone_id'] !== '' ? (string)$input['milestone_id'] : null;
     $user_id = $input['user_id'] ?? null;
 
     if (empty($project_id) || empty($invoice_no) || empty($amount) || empty($date)) {
@@ -53,8 +60,8 @@ if ($method === 'POST') {
     }
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO finances (project_id, invoice_no, description, vendor, amount, status, type, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$project_id, $invoice_no, $description, $vendor, $amount, $status, $type, $date]);
+        $stmt = $pdo->prepare("INSERT INTO finances (project_id, invoice_no, description, vendor, amount, status, type, date, milestone_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$project_id, $invoice_no, $description, $vendor, $amount, $status, $type, $date, $milestone_id]);
 
         $newId = $pdo->lastInsertId();
 
@@ -80,6 +87,7 @@ if ($method === 'POST') {
     $status = $input['status'] ?? null;
     $date = $input['date'] ?? null;
     $type = $input['type'] ?? null;
+    $milestone_id = array_key_exists('milestone_id', $input) ? ($input['milestone_id'] !== '' && $input['milestone_id'] !== null ? (string)$input['milestone_id'] : null) : 'NO_UPDATE';
     $user_id = $input['user_id'] ?? null;
 
     if (!$id) {
@@ -119,6 +127,10 @@ if ($method === 'POST') {
         if ($date !== null) {
             $fields[] = "date = ?";
             $params[] = $date;
+        }
+        if ($milestone_id !== 'NO_UPDATE') {
+            $fields[] = "milestone_id = ?";
+            $params[] = $milestone_id;
         }
 
         if (empty($fields)) {

@@ -67,6 +67,8 @@
 | `amount` | DECIMAL(15,2) NOT NULL | Jumlah bayaran |
 | `status` | ENUM('Selesai', 'Menunggu Kelulusan', 'Ditolak')| |
 | `date` | DATE | Tarikh transaksi |
+| `type` | VARCHAR(50) | 'Invois' / 'Denda' |
+| `milestone_id` | INT NULL | Pautan ke fasa dalam jadual bayaran projek |
 | `created_at` | TIMESTAMP | |
 
 ### 5. `documents` (Repositori Fail DMS)
@@ -92,6 +94,38 @@
 | `ip_address` | VARCHAR(45) | IP Pengguna |
 | `created_at` | TIMESTAMP | |
 
+### 7. `smtp_settings` (Konfigurasi Pelayan E-mel)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT PRIMARY KEY DEFAULT 1 | ID singleton rekod konfigurasi |
+| `smtp_host` | VARCHAR(255) NOT NULL | Pelayan SMTP (cth: `smtp.kehakiman.gov.my`) |
+| `smtp_port` | INT NOT NULL DEFAULT 587 | Port SMTP (587, 465, 25) |
+| `smtp_encryption` | ENUM('tls', 'ssl', 'none') DEFAULT 'tls' | Kaedah enkripsi |
+| `smtp_user` | VARCHAR(150) NULL | ID / Pengguna akaun SMTP |
+| `smtp_pass` | VARCHAR(255) NULL | Kata laluan SMTP |
+| `from_email` | VARCHAR(150) NOT NULL | E-mel pengirim rasmi |
+| `from_name` | VARCHAR(100) NOT NULL | Nama paparan pengirim rasmi |
+| `is_active` | TINYINT(1) DEFAULT 1 | Suis status aktif e-mel sistem |
+| `notify_on_risk` | TINYINT(1) DEFAULT 1 | Notifikasi e-mel bagi projek berisiko |
+| `notify_on_overdue_task` | TINYINT(1) DEFAULT 1 | Notifikasi e-mel bagi tugasan lewat |
+| `notify_on_payment_due` | TINYINT(1) DEFAULT 1 | Notifikasi e-mel bagi bayaran tertunggak/hampir matang |
+| `updated_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+### 8. `notifications` (Notifikasi Pintar Auto-Alert)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT AUTO_INCREMENT PK | ID unik rekod notifikasi |
+| `user_id` | INT NULL (FK) | Penerima notifikasi (NULL jika untuk semua/pentadbir) |
+| `project_id` | INT NULL (FK) | Rujuk `projects.id` |
+| `type` | ENUM('danger', 'warning', 'info', 'success') | Tahap amaran notifikasi |
+| `category` | VARCHAR(50) NOT NULL | 'project_risk', 'payment_due', 'task_overdue', 'audit_security' |
+| `title` | VARCHAR(200) NOT NULL | Tajuk notifikasi |
+| `message` | TEXT NOT NULL | Keterangan amaran terperinci |
+| `link_view` | VARCHAR(100) NULL | Paparan sasaran navigasi (cth: 'project_detail') |
+| `is_read` | TINYINT(1) DEFAULT 0 | 0: Belum baca, 1: Telah dibaca |
+| `email_sent` | TINYINT(1) DEFAULT 0 | Status penghantaran emel |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+
 ---
 
 ## Changelog
@@ -100,3 +134,5 @@
 |--------|-----------|------|
 | 20 Mei 2026 | Penciptaan schema pangkalan data awal (6 jadual) | Antigravity AI |
 | 20 Mei 2026 | Integrasi API & UI Modul Kewangan (`finances`) sepenuhnya | Antigravity AI |
+| 17 Sep 2026 | Tambah lajur `milestone_id` dalam `finances` untuk menghubungkan tuntutan dengan Jadual Bayaran Projek | Antigravity AI |
+| 17 Sep 2026 | Tambah jadual `smtp_settings` dan `notifications` untuk modul Sistem Notifikasi Pintar (Auto-Alert) & Konfigurasi E-mel SMTP | Antigravity AI |
