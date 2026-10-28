@@ -119,10 +119,17 @@ if ($method === 'POST') {
 
 } elseif ($method === 'DELETE') {
     // Padam pengguna
-    $id = $input['id'] ?? null;
+    $id = intval($input['id'] ?? 0);
     if (!$id) {
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "ID pengguna diperlukan"]);
+        exit;
+    }
+
+    // Perlindungan Akaun Superadmin Utama (System Safeguard)
+    if ($id === 1) {
+        http_response_code(403);
+        echo json_encode(["status" => "error", "message" => "Akaun Superadmin Utama sistem tidak boleh dipadam."]);
         exit;
     }
 

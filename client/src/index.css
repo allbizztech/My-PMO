@@ -32,35 +32,116 @@ body {
   padding: 0;
 }
 
-@media print {
+/* Screen mode: hide dedicated print root */
+#print-root {
+  display: none;
+}
 
-  aside,
-  header,
-  footer,
-  .print\:hidden {
+@page {
+  size: A4 portrait;
+  margin: 10mm 10mm 12mm 10mm;
+}
+
+@media print {
+  /* 1. COMPLETELY HIDE THE INTERACTIVE SCREEN APP IN #root */
+  /* This guarantees ZERO flex, scrollbar, top margins, or layout bleed from screen UI */
+  #root {
     display: none !important;
   }
 
-  main {
-    overflow: visible !important;
+  /* 2. Unconstrain standard page containers */
+  html,
+  body {
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 3. Render the dedicated #print-root cleanly at the very top of Page 1 */
+  #print-root {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    color: #0f172a !important;
+    position: static !important;
   }
 
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
+  /* 4. Fallback hiding for any screen navigation chrome or modals */
+  aside,
+  header,
+  footer,
+  .print\:hidden,
+  [data-print-hidden="true"] {
+    display: none !important;
   }
 
+  /* 3. Ensure printable containers are rendered cleanly */
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:inline-block {
+    display: inline-block !important;
+  }
+
+  .print\:flex {
+    display: flex !important;
+  }
+
+  .print\:grid {
+    display: grid !important;
+  }
+
+  /* 4. Page Break Controls */
+  .break-inside-avoid,
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-page-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .print-avoid-break-after {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* 5. Table print rules */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th, td {
+    word-break: break-word !important;
+  }
+
+  /* 6. High contrast and crisp borders for print */
   .shadow-sm,
   .shadow-md,
+  .shadow-lg,
   .shadow-xl,
   .shadow-2xl {
     box-shadow: none !important;
-  }
-
-  .border {
-    border-color: #e2e8f0 !important;
   }
 }

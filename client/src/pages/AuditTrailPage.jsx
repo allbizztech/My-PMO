@@ -19,7 +19,7 @@ export const AuditTrailPage = ({ currentUser, showToastNotification }) => {
 
     const fetchAuditLogs = async () => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/audit.php');
+            const res = await fetch('/My-PMO/api/modules/audit.php');
             const data = await res.json();
             if (data.status === 'success') {
                 const mapped = data.data.map(l => ({
@@ -169,7 +169,7 @@ export const AuditTrailPage = ({ currentUser, showToastNotification }) => {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-300 printable-area">
+        <div className="space-y-6 w-full max-w-[1720px] mx-auto pb-12 animate-in fade-in duration-300 printable-area">
             {/* Top Breadcrumb & Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
                 <div>

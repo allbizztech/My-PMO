@@ -27,7 +27,7 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
 
     const fetchDivisionsAndUnits = async () => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/divisions.php');
+            const res = await fetch('/My-PMO/api/modules/divisions.php');
             const data = await res.json();
             if (data.status === 'success' && data.data) {
                 setDivisionList(data.data);
@@ -39,7 +39,7 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/users.php');
+            const res = await fetch('/My-PMO/api/modules/users.php');
             const data = await res.json();
             if (data.status === 'success' && data.data) {
                 setUserList(data.data);
@@ -97,7 +97,7 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
 
     const confirmDeleteProject = async (id) => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/projects.php', {
+            const res = await fetch('/My-PMO/api/modules/projects.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
@@ -144,7 +144,7 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
 
         try {
             if (editingProject) {
-                const res = await fetch('http://localhost/My-PMO/api/modules/projects.php', {
+                const res = await fetch('/My-PMO/api/modules/projects.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -168,7 +168,7 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
                 });
                 await res.json();
             } else {
-                const res = await fetch('http://localhost/My-PMO/api/modules/projects.php', {
+                const res = await fetch('/My-PMO/api/modules/projects.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -454,10 +454,10 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-initial">
-                            <button onClick={() => setShowFilterMenu(!showFilterMenu)} className="w-full sm:w-auto bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors cursor-pointer whitespace-nowrap text-sm">
-                                <Filter className="w-4 h-4 mr-2 shrink-0" /> Tapis {filterStatus !== 'Semua' && <span className="ml-1.5 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px]">{filterStatus}</span>}
+                            <button onClick={() => setShowFilterMenu(!showFilterMenu)} className="w-full sm:w-auto bg-white border border-slate-200 px-3.5 sm:px-4 py-2.5 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors cursor-pointer whitespace-nowrap text-xs sm:text-sm">
+                                <Filter className="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" /> Tapis {filterStatus !== 'Semua' && <span className="ml-1.5 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px]">{filterStatus}</span>}
                             </button>
                             {showFilterMenu && (
                                 <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-2 animate-in fade-in zoom-in-95">
@@ -471,19 +471,20 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
                             )}
                         </div>
 
-                        <button onClick={handleExportCSV} className="flex-1 sm:flex-initial bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors cursor-pointer active:scale-95 whitespace-nowrap text-sm" title="Muat turun senarai sebagai CSV">
-                            <Download className="w-4 h-4 mr-2 text-indigo-600 shrink-0" /> Eksport CSV
+                        <button onClick={handleExportCSV} className="flex-1 sm:flex-initial bg-white border border-slate-200 text-slate-700 px-3 sm:px-4 py-2.5 rounded-xl font-semibold hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors cursor-pointer active:scale-95 whitespace-nowrap text-xs sm:text-sm" title="Muat turun senarai sebagai CSV">
+                            <Download className="w-4 h-4 mr-1.5 sm:mr-2 text-indigo-600 shrink-0" /> Eksport CSV
                         </button>
 
-                        <button onClick={openNewModal} className="flex-1 sm:flex-initial bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 flex items-center justify-center shadow-md transition-all active:scale-[0.98] cursor-pointer whitespace-nowrap text-sm">
-                            <Plus className="w-4 h-4 mr-2 shrink-0" /> Projek Baharu
+                        <button onClick={openNewModal} className="w-full sm:w-auto bg-slate-900 text-white px-4 sm:px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-800 flex items-center justify-center shadow-md transition-all active:scale-[0.98] cursor-pointer whitespace-nowrap text-xs sm:text-sm">
+                            <Plus className="w-4 h-4 mr-1.5 sm:mr-2 shrink-0" /> Projek Baharu
                         </button>
                     </div>
                 </div>
             </div>
 
             <Card noPadding className="w-full overflow-hidden border border-slate-100">
-                <table className="w-full text-left border-collapse table-auto">
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[720px] text-left border-collapse table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-100">
                             <th className="px-3 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center w-12">Bil.</th>
@@ -584,8 +585,9 @@ export const ProjectListPage = ({ setView, projects, setProjects, onSelectProjec
                         )}
                     </tbody>
                 </table>
+                </div>
 
-                <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="px-4 sm:px-8 py-4 sm:py-5 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm font-medium text-slate-500">
                         Memaparkan <span className="font-bold text-slate-900">{(currentPage - 1) * ITEMS_PER_PAGE + (filteredProjects.length > 0 ? 1 : 0)}</span> hingga <span className="font-bold text-slate-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredProjects.length)}</span> daripada <span className="font-bold text-slate-900">{filteredProjects.length}</span> rekod
                     </span>

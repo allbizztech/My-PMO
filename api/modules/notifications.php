@@ -145,9 +145,11 @@ if ($method === 'GET') {
         // 4. Rekod Notifikasi Tersimpan dari Pangkalan Data (Custom/Disimpan)
         $customSql = "SELECT n.id, n.project_id, n.type, n.category, n.title, n.message, n.link_view, n.is_read, n.created_at 
                       FROM notifications n 
-                      WHERE (n.user_id IS NULL " . ($userId ? "OR n.user_id = " . intval($userId) : "") . ") 
+                      WHERE (n.user_id IS NULL " . ($userId ? "OR n.user_id = ? " : "") . ") 
                       ORDER BY n.created_at DESC LIMIT 10";
-        $customNotes = $pdo->query($customSql)->fetchAll();
+        $customStmt = $pdo->prepare($customSql);
+        $customStmt->execute($userId ? [$userId] : []);
+        $customNotes = $customStmt->fetchAll();
 
         foreach ($customNotes as $cn) {
             $notifications[] = [

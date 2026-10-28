@@ -1,0 +1,25 @@
+# Perlindungan Direktori Root Projek
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /My-PMO/
+
+    # Jangan ubah hala laluan untuk API atau uploads
+    RewriteRule ^api/ - [L]
+    RewriteRule ^uploads/ - [L]
+
+    # Sekiranya fail atau direktori fizikal wujud, akses terus
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Halakan semua permohonan lain ke index.html (SPA React Router)
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# Sekat akses terus ke fail sensitif (.env, .git, .sql, .md)
+<FilesMatch "\.(env|sql|md|log|ini|git.*)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

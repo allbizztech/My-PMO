@@ -466,15 +466,7 @@ if ($method === 'POST') {
                     throw new \Exception("item_id diperlukan");
                 }
 
-                $isChecked = isset($input['is_checked']) ? intval($input['is_checked']) : null;
-                $status = $input['status'] ?? null; // 'pending', 'submitted', 'verified', 'not_applicable'
-                $refNo = $input['reference_no'] ?? null;
-                $remarks = $input['remarks'] ?? null;
-                $docId = isset($input['document_id']) ? ($input['document_id'] ? intval($input['document_id']) : null) : null;
-                $checkedBy = $input['checked_by'] ?? 'Pegawai PMO';
-                $userId = intval($input['user_id'] ?? 1);
-
-                // Dapatkan rekod item semasa
+                // Dapatkan rekod item semasa dahulu
                 $stmtGet = $pdo->prepare("SELECT * FROM procurement_checklist_items WHERE id = ?");
                 $stmtGet->execute([$itemId]);
                 $currentItem = $stmtGet->fetch(PDO::FETCH_ASSOC);
@@ -483,16 +475,32 @@ if ($method === 'POST') {
                     throw new \Exception("Item semakan tidak dijumpai.");
                 }
 
+                $isChecked = isset($input['is_checked']) ? intval($input['is_checked']) : null;
+                $status = $input['status'] ?? null; // 'pending', 'submitted', 'verified', 'not_applicable'
+                $refNo = array_key_exists('reference_no', $input) ? $input['reference_no'] : $currentItem['reference_no'];
+                $remarks = array_key_exists('remarks', $input) ? $input['remarks'] : $currentItem['remarks'];
+                $docId = array_key_exists('document_id', $input) ? ($input['document_id'] ? intval($input['document_id']) : null) : $currentItem['document_id'];
+                $checkedBy = $input['checked_by'] ?? 'Pegawai PMO';
+                $userId = intval($input['user_id'] ?? 1);
+
                 $newChecked = ($isChecked !== null) ? $isChecked : $currentItem['is_checked'];
                 $newStatus = ($status !== null) ? $status : ($newChecked ? 'verified' : 'pending');
+
+                // Selaraskan hubungan status dan is_checked
+                if ($newStatus === 'pending' || $newStatus === 'submitted') {
+                    $newChecked = 0;
+                } else if ($newStatus === 'verified' || $newStatus === 'not_applicable') {
+                    $newChecked = 1;
+                }
+
                 $checkedAt = ($newChecked == 1) ? date('Y-m-d H:i:s') : null;
                 $newCheckedBy = ($newChecked == 1) ? $checkedBy : null;
 
                 $stmtUp = $pdo->prepare("UPDATE procurement_checklist_items SET 
                     is_checked = ?, 
                     status = ?, 
-                    reference_no = COALESCE(?, reference_no), 
-                    remarks = COALESCE(?, remarks),
+                    reference_no = ?, 
+                    remarks = ?,
                     document_id = ?,
                     checked_by = ?,
                     checked_at = ?,
@@ -530,7 +538,7 @@ if ($method === 'POST') {
                     'message' => 'Status item semakan berjaya dikemas kini.',
                     'item_id' => $itemId,
                     'is_checked' => $newChecked,
-                    'status' => $newStatus,
+                    'item_status' => $newStatus,
                     'completed_items' => $comp,
                     'total_items' => $tot
                 ]);
@@ -573,13 +581,48 @@ if ($method === 'POST') {
                     throw new \Exception("Ralat memuat naik fail: Kod " . $file['error']);
                 }
 
+                // 1. Validasi Saiz Fail (Maksimum 10MB)
+                if ($file['size'] > 10485760) {
+                    throw new \Exception("Saiz fail melebihi had maksimum 10MB.");
+                }
+
+                // 2. Validasi MIME Type menggunakan finfo (Pencegahan Unrestricted Upload / Webshell)
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+
+                $allowedMimes = [
+                    'application/pdf' => 'pdf',
+                    'image/png' => 'png',
+                    'image/jpeg' => 'jpg',
+                    'image/gif' => 'gif',
+                    'application/msword' => 'doc',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+                    'application/vnd.ms-excel' => 'xls',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+                    'text/plain' => 'txt',
+                    'application/zip' => 'zip',
+                    'application/x-zip-compressed' => 'zip'
+                ];
+
+                if (!array_key_exists($mimeType, $allowedMimes)) {
+                    throw new \Exception("Format fail tidak dibenarkan. Hanya PDF, Word, Excel, PNG, JPG, dan ZIP sahaja dibenarkan.");
+                }
+
+                // 3. Ekstrak dan bersihkan sambungan fail
+                $ext = $allowedMimes[$mimeType];
+                $dangerousExts = ['php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'exe', 'sh', 'bat', 'cmd', 'js', 'py'];
+                $clientExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                if (in_array($clientExt, $dangerousExts) || in_array($ext, $dangerousExts)) {
+                    throw new \Exception("Fail jenis boleh laku (executable) disekat atas faktor keselamatan.");
+                }
+
                 // Simpan ke direktori api/uploads/
                 $uploadDir = __DIR__ . '/../uploads/';
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
 
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $uniqueName = 'doc_' . uniqid('', true) . '.' . $ext;
                 $targetPath = $uploadDir . $uniqueName;
 

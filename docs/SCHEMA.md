@@ -133,8 +133,18 @@
 | `project_id` | INT NULL (FK) | Rujuk `projects.id` (pilihan) |
 | `title` | VARCHAR(255) NOT NULL | Tajuk acara / mesyuarat |
 | `event_date` | DATE NOT NULL | Tarikh acara berlangsung |
+| `start_time` | TIME DEFAULT '09:00:00' | Masa mula mesyuarat |
+| `end_time` | TIME DEFAULT '10:00:00' | Masa tamat mesyuarat |
 | `event_type` | ENUM('meeting', 'milestone', 'deadline', 'task', 'review') | Jenis kategori acara kalendar |
-| `description` | TEXT NULL | Butiran tambahan / lokasi mesyuarat |
+| `location` | VARCHAR(255) NULL | Lokasi fizikal bilik mesyuarat / dewan |
+| `meeting_link` | VARCHAR(500) NULL | Pautan mesyuarat maya (Microsoft Teams, Webex, Meet) |
+| `description` | TEXT NULL | Butiran tambahan acara |
+| `agenda` | TEXT NULL | Senarai butiran agenda mesyuarat berstruktur |
+| `attendees` | TEXT NULL | Senarai emel peserta jemputan (format JSON) |
+| `cc_emails` | TEXT NULL | Senarai emel penerima salinan (CC) format JSON / teks |
+| `bcc_emails` | TEXT NULL | Senarai emel salinan tersembunyi (BCC) format JSON / teks |
+| `template_id` | INT NULL (FK) | Rujukan templat emel daripada `email_templates.id` |
+| `invite_status` | ENUM('draft', 'sent') DEFAULT 'draft' | Status jemputan e-mel kalendar Outlook |
 | `created_by` | INT NULL (FK) | Rujuk `users.id` (pegawai yang mendaftar) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
@@ -176,6 +186,19 @@
 | `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP |
 | `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP |
 
+### 12. `email_templates` (Templat Jemputan E-mel Dinamik)
+| Column | Type | Keterangan |
+|--------|------|------------|
+| `id` | INT AUTO_INCREMENT PK | ID unik templat e-mel |
+| `name` | VARCHAR(150) NOT NULL | Nama rujukan templat (cth: Jemputan Mesyuarat Pemandu ICT) |
+| `category` | VARCHAR(50) DEFAULT 'meeting' | Kategori templat (`meeting`, `review`, `general`) |
+| `subject` | VARCHAR(255) NOT NULL | Format subjek e-mel dengan pembolehubah |
+| `body` | TEXT NOT NULL | Kandungan e-mel rasmi dengan pembolehubah `{TAJUK_MESYUARAT}`, `{TARIKH}`, `{MASA}`, `{LOKASI}`, `{AGENDA}`, dll |
+| `is_default` | TINYINT(1) DEFAULT 0 | 1 jika templat piawai sistem |
+| `created_by` | INT NULL (FK) | Rujuk `users.id` (pentadbir pencipta templat) |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
 ---
 
 ## Changelog
@@ -188,4 +211,6 @@
 | 17 Sep 2026 | Tambah jadual `smtp_settings` dan `notifications` untuk modul Sistem Notifikasi Pintar (Auto-Alert) & Konfigurasi E-mel SMTP | Antigravity AI |
 | 17 Sep 2026 | Tambah jadual `calendar_events` untuk sokongan modul Kalendar Projek Bersepadu Dinamik | Antigravity AI |
 | 17 Sep 2026 | Tambah jadual `procurement_checklists` dan `procurement_checklist_items` bagi Modul Senarai Semak Perolehan ICT PKPMP | Antigravity AI |
+| 19 Sep 2026 | Tambah lajur masa (`start_time`, `end_time`), lokasi (`location`), pautan mesyuarat (`meeting_link`), agenda (`agenda`), senarai peserta (`attendees`), dan status jemputan (`invite_status`) dalam `calendar_events` untuk sokongan jemputan mesyuarat & integrasi Outlook | Antigravity AI |
+| 19 Sep 2026 | Tambah jadual `email_templates` bagi pengurusan templat jemputan e-mel dinamik serta lajur `cc_emails`, `bcc_emails`, dan `template_id` dalam `calendar_events` | Antigravity AI |
 

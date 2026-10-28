@@ -27,7 +27,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
     const fetchBackupData = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/backup.php?action=list_backups');
+            const res = await fetch('/My-PMO/api/modules/backup.php?action=list_backups');
             const data = await res.json();
             if (data.status === 'success') {
                 setBackups(data.data.logs || []);
@@ -59,7 +59,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
     const handleCreateBackup = async () => {
         setIsCreatingBackup(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/backup.php', {
+            const res = await fetch('/My-PMO/api/modules/backup.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -88,7 +88,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
         e.preventDefault();
         setIsSavingSettings(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/backup.php', {
+            const res = await fetch('/My-PMO/api/modules/backup.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -116,7 +116,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
     const handleDeleteBackup = async () => {
         if (!backupToDelete) return;
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/backup.php', {
+            const res = await fetch('/My-PMO/api/modules/backup.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: backupToDelete.id })
@@ -194,7 +194,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
     const backupPercentage = Math.max(0, 100 - dbPercentage - uploadPercentage);
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-300">
+        <div className="space-y-6 w-full max-w-[1720px] mx-auto pb-12 animate-in fade-in duration-300">
             {/* Modal Confirmation Delete */}
             {backupToDelete && (
                 <div className="fixed inset-0 z-[70] overflow-y-auto">
@@ -662,7 +662,7 @@ export const BackupPage = ({ showToastNotification, currentUser }) => {
                                         <td className="px-5 py-3.5 text-right">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <a
-                                                    href={`http://localhost/My-PMO/api/modules/backup.php?action=download&file=${encodeURIComponent(b.filename)}`}
+                                                    href={`/My-PMO/api/modules/backup.php?action=download&file=${encodeURIComponent(b.filename)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"

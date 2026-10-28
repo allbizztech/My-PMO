@@ -1,0 +1,3 @@
+# Sekat semua akses HTTP terus ke folder konfigurasi pangkalan data
+Order allow,deny
+Deny from all

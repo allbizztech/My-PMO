@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
     ClipboardCheck, CheckCircle2, AlertCircle, FileText, UploadCloud,
     Download, ExternalLink, Settings2, Printer, ChevronDown, ChevronRight,
     Clock, Shield, Building2, Check, X, AlertTriangle, Paperclip, Plus,
-    RefreshCw, Filter, HelpCircle
+    RefreshCw, Filter, HelpCircle, Eye
 } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
@@ -39,6 +40,7 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
     const [isLoading, setIsLoading] = useState(true);
     const [expandedPhases, setExpandedPhases] = useState(new Set([1, 2])); // Default buka Fasa 1 & 2
     const [phaseFilter, setPhaseFilter] = useState('all');
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
     // Modals
     const [linkModalItem, setLinkModalItem] = useState(null);
@@ -124,6 +126,24 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
         const newChecked = item.is_checked == 1 ? 0 : 1;
         const newStatus = newChecked ? 'verified' : 'pending';
 
+        // Optimistic update for instantaneous feedback
+        setChecklistData(prev => {
+            if (!prev || !prev.phases) return prev;
+            return {
+                ...prev,
+                phases: prev.phases.map(ph => ({
+                    ...ph,
+                    items: ph.items.map(it => it.id === item.id ? { 
+                        ...it, 
+                        is_checked: newChecked, 
+                        status: newStatus,
+                        checked_by: newChecked ? (currentUser?.name || 'Pegawai PMO') : null,
+                        checked_at: newChecked ? new Date().toISOString().split('T')[0] : null
+                    } : it)
+                }))
+            };
+        });
+
         try {
             const res = await fetch(API_ENDPOINTS.PROCUREMENT_CHECKLIST, {
                 method: 'POST',
@@ -138,14 +158,16 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                 })
             });
             const data = await res.json();
-            if (data.status === 'success' || data.status === 'verified') {
+            if (data.status === 'success' || data.item_status || data.status === 'verified') {
                 showToastNotification(newChecked ? `Item ${item.item_code} disahkan selesai.` : `Item ${item.item_code} ditandakan belum selesai.`, 'success');
                 fetchChecklist();
             } else {
                 showToastNotification(data.message || 'Ralat mengemas kini item.', 'error');
+                fetchChecklist();
             }
         } catch (err) {
             showToastNotification('Gagal menyambung ke pelayan.', 'error');
+            fetchChecklist();
         }
     };
 
@@ -154,6 +176,7 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
         e.preventDefault();
         if (!editingItem) return;
         setIsSavingItem(true);
+        const newChecked = (editStatus === 'verified' || editStatus === 'not_applicable') ? 1 : 0;
         try {
             const res = await fetch(API_ENDPOINTS.PROCUREMENT_CHECKLIST, {
                 method: 'POST',
@@ -164,13 +187,13 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                     reference_no: editRefNo,
                     remarks: editRemarks,
                     status: editStatus,
-                    is_checked: editStatus === 'verified' || editStatus === 'not_applicable' ? 1 : editingItem.is_checked,
+                    is_checked: newChecked,
                     checked_by: currentUser?.name || 'Pegawai PMO',
                     user_id: currentUser?.id || 1
                 })
             });
             const data = await res.json();
-            if (data.status === 'success' || data.status === 'verified') {
+            if (data.status === 'success' || data.item_status || data.status === 'verified') {
                 showToastNotification('Maklumat item berjaya dikemas kini.', 'success');
                 setEditingItem(null);
                 fetchChecklist();
@@ -306,8 +329,301 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
         ? phases 
         : phases.filter(p => p.phase_number === parseInt(phaseFilter));
 
+    const renderPrintableDocument = () => {
+        const printDate = new Date().toLocaleDateString('ms-MY', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return (
+            <div className="font-sans text-slate-900 w-full bg-white print:p-0 leading-normal">
+                {/* 1. KEPALA SURAT RASMI KERAJAAN (OFFICIAL LETTERHEAD) */}
+                <div className="pb-2.5 border-b-2 border-slate-900 mb-3.5">
+                    {/* Bar Status Keselamatan & Rujukan Terperingkat (Disusun Kemas Di Bahagian Atas) */}
+                    <div className="flex items-center justify-between text-[9px] pb-1.5 mb-2 border-b border-slate-200">
+                        <span className="font-mono text-slate-500 font-bold">KOD DOKUMEN: PKPMP/BTM/PMO/SSP-01</span>
+                        <div className="flex items-center gap-3">
+                            <span className="px-2 py-0.5 bg-slate-100 border border-slate-400 font-mono font-bold text-slate-900 rounded text-[8.5px] uppercase">
+                                TERPERINGKAT / DALAMAN
+                            </span>
+                            <span className="text-slate-500">Tarikh Cetakan: {printDate}</span>
+                        </div>
+                    </div>
+
+                    {/* Logo + Teks Jabatan (Sebaris Penuh) */}
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center p-2 shrink-0 border border-slate-700">
+                            <Shield className="w-7 h-7" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[9.5px] font-extrabold tracking-widest text-slate-600 uppercase leading-none mb-1">
+                                JABATAN PERDANA MENTERI
+                            </p>
+                            <h1 className="text-sm md:text-[14px] font-black uppercase text-slate-900 tracking-tight leading-tight whitespace-nowrap">
+                                PEJABAT KETUA PENDAFTAR MAHKAMAH PERSEKUTUAN MALAYSIA
+                            </h1>
+                            <p className="text-[10.5px] font-bold text-slate-800 leading-snug mt-0.5">
+                                BAHAGIAN TEKNOLOGI MAKLUMAT
+                            </p>
+                            <p className="text-[9px] text-slate-500 leading-none mt-0.5">
+                                Istana Kehakiman, Presint 3, 62506 Wilayah Persekutuan Putrajaya
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-slate-300 text-center">
+                        <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
+                            SENARAI SEMAK PEMATUHAN TADBIR URUS PEROLEHAN ICT (SOP PKPMP)
+                        </h2>
+                        <p className="text-[10px] text-slate-600 italic mt-0.5">
+                            Pematuhan Tatacara Perolehan Kerajaan &bull; Kelulusan JPICT &bull; Tapak eP &bull; Lantikan Jawatankuasa &bull; Surat Setuju Terima (SST)
+                        </p>
+                    </div>
+                </div>
+
+                {/* 2. BAHAGIAN A: MAKLUMAT PROJEK & PARAMETER PEROLEHAN (TABLE FORMAT) */}
+                <div className="mb-3.5 text-[10px]">
+                    <div className="bg-slate-800 text-white px-2.5 py-1 font-bold uppercase tracking-wider text-[9.5px] flex justify-between items-center rounded-t border border-slate-800">
+                        <span>BAHAGIAN A: MAKLUMAT PROJEK &amp; PARAMETER PEROLEHAN</span>
+                        <span className="font-mono text-slate-200 text-[9px]">
+                            KEMAJUAN PATUH: {progressPct}% ({completedItems}/{totalItems} Dokumen Disahkan)
+                        </span>
+                    </div>
+
+                    <table className="w-full border-collapse border border-slate-400 text-[9px]">
+                        <tbody>
+                            <tr>
+                                <td className="w-[18%] bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Nama Projek:</td>
+                                <td className="w-[32%] font-extrabold border border-slate-400 p-1.5 text-slate-900">{project.name}</td>
+                                <td className="w-[18%] bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Kaedah Perolehan:</td>
+                                <td className="w-[32%] font-extrabold border border-slate-400 p-1.5 text-indigo-950">
+                                    {methodMeta.label} <span className="font-normal text-[8.5px] text-slate-600">({methodMeta.threshold})</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Kod Projek:</td>
+                                <td className="font-mono font-bold border border-slate-400 p-1.5 text-slate-900">{project.project_code || `PRJ-${project.id}`}</td>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Anggaran Nilai Bajet:</td>
+                                <td className="font-mono font-extrabold border border-slate-400 p-1.5 text-slate-900">
+                                    RM {Number(checklist.estimated_value || project.budget || 0).toLocaleString('ms-MY', { minimumFractionDigits: 2 })}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Agensi &amp; Bahagian:</td>
+                                <td className="border border-slate-400 p-1.5 text-slate-800">{project.agency || 'PKPMP'} &bull; {project.division || 'BTM'}</td>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Badan Kelulusan Akhir:</td>
+                                <td className="font-bold border border-slate-400 p-1.5 text-slate-800">{methodMeta.approvalBody}</td>
+                            </tr>
+                            <tr>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Pengurus PMO (Gov):</td>
+                                <td className="font-bold border border-slate-400 p-1.5 text-slate-800">{project.manager || 'Pegawai PMO PKPMP'}</td>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Syarat Bon Kontrak:</td>
+                                <td className="border border-slate-400 p-1.5 text-slate-800 font-semibold">
+                                    {checklist.requires_contract == 1 ? `Tempoh : ${checklist.contract_period_months || 24} Bulan` : 'Tidak Diperlukan'}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Syarikat / Vendor:</td>
+                                <td className="border border-slate-400 p-1.5 text-slate-800">{project.vendor || 'Dalam Tindakan Pelantikan'}</td>
+                                <td className="bg-slate-100 font-bold border border-slate-400 p-1.5 text-slate-700">Status Keseluruhan:</td>
+                                <td className="font-bold border border-slate-400 p-1.5 text-slate-900">
+                                    {progressPct === 100 ? (
+                                        <span className="text-emerald-700">✓ LENGKAP &amp; MEMATUHI SOP</span>
+                                    ) : (
+                                        <span className="text-indigo-900">{completedItems} Daripada {totalItems} Dokumen Disahkan ({progressPct}%)</span>
+                                    )}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* 3. BAHAGIAN B: RINGKASAN STATUS 8 FASA */}
+                <div className="mb-4 text-[10px]">
+                    <div className="bg-slate-800 text-white px-2.5 py-1 font-bold uppercase tracking-wider text-[9.5px] flex justify-between items-center rounded-t border border-slate-800">
+                        <span>BAHAGIAN B: RINGKASAN STATUS KEMAJUAN MENGIKUT FASA PEROLEHAN</span>
+                    </div>
+
+                    <table className="w-full text-[9px] border-collapse border border-slate-400">
+                        <thead>
+                            <tr className="bg-slate-100 text-slate-900 text-center font-bold">
+                                <th className="border border-slate-400 p-1 w-14 text-center">Fasa</th>
+                                <th className="border border-slate-400 p-1 text-left">Fasa Tindakan Perolehan SOP</th>
+                                <th className="border border-slate-400 p-1 w-20 text-center">Bil. Dokumen</th>
+                                <th className="border border-slate-400 p-1 w-20 text-center">Telah Selesai</th>
+                                <th className="border border-slate-400 p-1 w-20 text-center">Peratusan</th>
+                                <th className="border border-slate-400 p-1 w-28 text-center">Status Fasa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {phases.map((p) => {
+                                const isDone = p.completed_items >= p.total_items && p.total_items > 0;
+                                const pct = p.total_items > 0 ? Math.round((p.completed_items / p.total_items) * 100) : 0;
+                                return (
+                                    <tr key={p.phase_number} className="hover:bg-slate-50">
+                                        <td className="border border-slate-400 p-1 text-center font-bold">Fasa {p.phase_number}</td>
+                                        <td className="border border-slate-400 p-1 font-bold text-slate-800">{p.phase_name}</td>
+                                        <td className="border border-slate-400 p-1 text-center">{p.total_items}</td>
+                                        <td className="border border-slate-400 p-1 text-center font-bold text-slate-900">{p.completed_items}</td>
+                                        <td className="border border-slate-400 p-1 text-center font-mono font-bold">{pct}%</td>
+                                        <td className="border border-slate-400 p-1 text-center font-bold">
+                                            {isDone ? (
+                                                <span className="text-emerald-700">✓ LENGKAP</span>
+                                            ) : p.completed_items > 0 ? (
+                                                <span className="text-amber-700">DALAM PROSES</span>
+                                            ) : (
+                                                <span className="text-slate-500">BELUM SELESAI</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* 4. BAHAGIAN C: SENARAI TERPERINCI DOKUMEN BUKTI (SEMUA 8 FASA) */}
+                <div className="space-y-4">
+                    <div className="bg-slate-900 text-white px-2.5 py-1 font-bold uppercase tracking-wider text-[9.5px] rounded">
+                        BAHAGIAN C: SENARAI TERPERINCI SEMAKAN DOKUMEN &amp; BUKTI KELULUSAN (8 FASA)
+                    </div>
+
+                    {phases.map((phase) => {
+                        const isBreakBefore = phase.phase_number === 3 || phase.phase_number === 8;
+                        return (
+                            <div 
+                                key={phase.phase_number} 
+                                className={`mb-3.5 ${isBreakBefore ? 'print-page-break-before pt-2' : ''}`}
+                                style={isBreakBefore ? { breakBefore: 'page', pageBreakBefore: 'always' } : {}}
+                            >
+                                <div className="bg-slate-700 text-white px-2.5 py-1 text-[9.5px] font-bold flex justify-between items-center rounded-t">
+                                    <span>FASA {phase.phase_number}: {phase.phase_name.toUpperCase()}</span>
+                                    <span className="text-[9px] font-mono text-slate-200">
+                                        {phase.completed_items} / {phase.total_items} Disahkan ({phase.total_items > 0 ? Math.round((phase.completed_items / phase.total_items) * 100) : 0}%)
+                                    </span>
+                                </div>
+
+                            <table className="w-full text-[9px] border-collapse border border-slate-400">
+                                <thead>
+                                    <tr className="bg-slate-100 text-slate-900 text-left font-bold">
+                                        <th className="border border-slate-400 p-1 w-12 text-center">Kod</th>
+                                        <th className="border border-slate-400 p-1">Perkara / Dokumen Bukti SOP</th>
+                                        <th className="border border-slate-400 p-1 w-20 text-center">Status Semakan</th>
+                                        <th className="border border-slate-400 p-1 w-28">No. Rujukan / Kelulusan</th>
+                                        <th className="border border-slate-400 p-1 w-20">Pemeriksa</th>
+                                        <th className="border border-slate-400 p-1 w-32">Catatan / Dokumen DMS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {phase.items.map((it) => {
+                                        const isDone = it.is_checked == 1 || it.status === 'completed';
+                                        const isNA = it.status === 'not_applicable';
+                                        return (
+                                            <tr key={it.id} className={isDone ? 'bg-white' : isNA ? 'bg-slate-50 text-slate-500' : 'bg-amber-50/20'}>
+                                                <td className="border border-slate-400 p-1 text-center font-mono font-bold">{it.item_code}</td>
+                                                <td className="border border-slate-400 p-1">
+                                                    <div className="font-bold text-slate-900">{it.item_title}</div>
+                                                    {it.description && (
+                                                        <div className="text-[8.5px] text-slate-600 mt-0.5 leading-tight">{it.description}</div>
+                                                    )}
+                                                </td>
+                                                <td className="border border-slate-400 p-1 text-center">
+                                                    {isDone ? (
+                                                        <span className="inline-block font-bold text-emerald-800 border border-emerald-400 bg-emerald-50 px-1 py-0.5 rounded text-[8.5px]">
+                                                            ☑ SELESAI
+                                                        </span>
+                                                    ) : isNA ? (
+                                                        <span className="inline-block font-semibold text-slate-600 border border-slate-300 bg-slate-100 px-1 py-0.5 rounded text-[8.5px]">
+                                                            [-] T/B
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-block font-semibold text-amber-800 border border-amber-300 bg-amber-50 px-1 py-0.5 rounded text-[8.5px]">
+                                                            ☐ BELUM
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="border border-slate-400 p-1 text-slate-800 font-mono text-[8.5px]">
+                                                    {it.reference_no || '-'}
+                                                </td>
+                                                <td className="border border-slate-400 p-1 text-slate-700 text-[8.5px]">
+                                                    {it.checked_by || '-'}
+                                                </td>
+                                                <td className="border border-slate-400 p-1 text-[8.5px]">
+                                                    {it.remarks && <div className="text-slate-800 italic">{it.remarks}</div>}
+                                                    {it.document_name && (
+                                                        <div className="text-slate-600 font-mono text-[8px] mt-0.5">
+                                                            Fail: {it.document_name}
+                                                        </div>
+                                                    )}
+                                                    {!it.remarks && !it.document_name && <span className="text-slate-400">-</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                })}
+            </div>
+
+                {/* 5. BAHAGIAN D: PERAKUAN & PENGESAHAN DUA PERINGKAT */}
+                <div className="mt-6 pt-3 border-t-2 border-slate-900 text-[10px] break-inside-avoid">
+                    <div className="text-center font-black uppercase tracking-wider mb-2.5 text-[11px] text-slate-900">
+                        BAHAGIAN D: PERAKUAN &amp; PENGESAHAN SEMAKAN PEMATUHAN PEROLEHAN
+                    </div>
+
+                    <table className="w-full border-collapse border border-slate-400 text-[9px]">
+                        <tbody>
+                            <tr>
+                                <td className="w-1/2 align-top border border-slate-400 p-3 space-y-2">
+                                    <p className="font-extrabold uppercase text-slate-900 border-b border-slate-300 pb-1 text-[9.5px]">
+                                        1. Disediakan Oleh (Pegawai PMO / Urus Setia ICT)
+                                    </p>
+                                    <p className="text-[8.5px] text-slate-600 leading-snug">
+                                        Saya mengesahkan bahawa semua maklumat, nombor rujukan, dan dokumen semakan perolehan di atas telah disemak dengan teliti selaras dengan SOP Perolehan ICT PKPMP.
+                                    </p>
+                                    <div className="pt-6 space-y-1 text-[9px]">
+                                        <p className="border-b border-dotted border-slate-400 pb-1">Tandatangan: ................................................................</p>
+                                        <p>Nama Pegawai: <strong>{currentUser?.name || '................................................................'}</strong></p>
+                                        <p>Jawatan: <strong>Pegawai PMO / Bahagian Teknologi Maklumat PKPMP</strong></p>
+                                        <p>Tarikh: <strong>{new Date().toLocaleDateString('ms-MY', { year: 'numeric', month: 'long', day: 'numeric' })}</strong></p>
+                                    </div>
+                                </td>
+                                <td className="w-1/2 align-top border border-slate-400 p-3 space-y-2">
+                                    <p className="font-extrabold uppercase text-slate-900 border-b border-slate-300 pb-1 text-[9.5px]">
+                                        2. Disahkan &amp; Diperakui Oleh (Ketua Bahagian / Pengarah)
+                                    </p>
+                                    <p className="text-[8.5px] text-slate-600 leading-snug">
+                                        Saya memperakui bahawa perolehan ICT ini telah memenuhi syarat tadbir urus dan garis panduan perolehan yang ditetapkan oleh PKPMP dan Kementerian Kewangan Malaysia.
+                                    </p>
+                                    <div className="pt-6 space-y-1 text-[9px]">
+                                        <p className="border-b border-dotted border-slate-400 pb-1">Tandatangan &amp; Cop: ................................................................</p>
+                                        <p>Nama: ................................................................................</p>
+                                        <p>Jawatan: <strong>Pengarah Bahagian Kewangan / BTM PKPMP</strong></p>
+                                        <p>Tarikh: ................................................................................</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div className="mt-4 pt-2 border-t border-slate-300 flex justify-between items-center text-[8.5px] text-slate-500 font-mono">
+                        <span>Sistem Pengurusan Projek MY-PMO PKPMP &bull; Modul Senarai Semak Tadbir Urus Perolehan</span>
+                        <span>Dokumen Rasmi &bull; Pematuhan Cetakan Berbilang Halaman A4</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="w-full">
+            {/* --- INTERACTIVE SCREEN UI (HIDDEN ON PRINT) --- */}
+            <div className="space-y-6 animate-in fade-in duration-300 print:hidden">
             {/* --- COMPLIANCE DASHBOARD HEADER CARD --- */}
             <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[28px] p-6 lg:p-8 text-white shadow-xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -320,15 +636,6 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${methodMeta.color}`}>
                                 {methodMeta.label} ({methodMeta.threshold})
                             </span>
-                            {checklist.requires_contract == 1 ? (
-                                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold">
-                                    Wajib Kontrak Rasmi (&gt; 4 Bulan)
-                                </span>
-                            ) : (
-                                <span className="px-3 py-1 bg-slate-800 text-slate-400 rounded-full text-xs font-medium">
-                                    Tiada Bon Kontrak
-                                </span>
-                            )}
                         </div>
                         <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
                             Senarai Semak Perolehan ICT
@@ -338,18 +645,26 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                         {canEdit && (
                             <button
                                 onClick={() => setIsSettingsModalOpen(true)}
-                                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/15 transition-all flex items-center gap-2 active:scale-95"
+                                className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/15 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
                             >
                                 <Settings2 className="w-4 h-4" /> Tetapan Kaedah
                             </button>
                         )}
                         <button
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/15 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                            title="Pratonton Susun Atur Dokumen A4 Rasmi"
+                        >
+                            <Eye className="w-4 h-4" /> Pratonton Cetak
+                        </button>
+                        <button
                             onClick={handlePrint}
-                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 active:scale-95"
+                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                            title="Cetak atau Simpan Sebagai Fail PDF"
                         >
                             <Printer className="w-4 h-4" /> Cetak Senarai Semak (PDF)
                         </button>
@@ -601,9 +916,9 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                                                                 {item.doc_file_name}
                                                             </span>
                                                             <a
-                                                                href={`http://localhost/My-PMO/api/uploads/${item.doc_file_path}`}
+                                                                href={`/My-PMO/api/uploads/${item.doc_file_path}`}
                                                                 target="_blank"
-                                                                rel="noreferrer"
+                                                                rel="noopener noreferrer"
                                                                 className="text-indigo-600 hover:text-indigo-800 p-1"
                                                                 title="Muat turun dokumen bukti"
                                                             >
@@ -927,80 +1242,57 @@ export const ProcurementChecklistTab = ({ project, currentUser, showToastNotific
                     </div>
                 </div>
             )}
-
-            {/* --- PRINTABLE A4 VIEW (HIDDEN ON SCREEN, VISIBLE ON PRINT) --- */}
-            <div className="hidden print:block font-sans text-slate-900 p-8 space-y-6">
-                <div className="text-center pb-4 border-b-2 border-slate-900">
-                    <h1 className="text-lg font-black uppercase">Pejabat Ketua Pendaftar Mahkamah Persekutuan Malaysia (PKPMP)</h1>
-                    <h2 className="text-base font-extrabold uppercase mt-1">Senarai Semak Pematuhan Perolehan ICT</h2>
-                    <p className="text-xs text-slate-600 mt-1">Dicetak pada: {new Date().toLocaleDateString('ms-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-xs py-2 border-b border-slate-300">
-                    <div>
-                        <p><strong>Nama Projek:</strong> {project.name}</p>
-                        <p><strong>Kod Projek:</strong> {project.project_code || project.id}</p>
-                        <p><strong>Pengurus PMO:</strong> {project.manager || 'Pegawai PMO PKPMP'}</p>
-                    </div>
-                    <div>
-                        <p><strong>Kaedah Perolehan:</strong> {methodMeta.label} ({methodMeta.threshold})</p>
-                        <p><strong>Nilai Anggaran:</strong> RM {Number(checklist.estimated_value || project.budget || 0).toLocaleString('ms-MY', { minimumFractionDigits: 2 })}</p>
-                        <p><strong>Status Pematuhan:</strong> {completedItems} / {totalItems} Dokumen Disahkan ({progressPct}%)</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6 pt-2">
-                    {phases.map((phase) => (
-                        <div key={phase.phase_number} className="break-inside-avoid">
-                            <h3 className="text-xs font-black uppercase bg-slate-100 p-2 border border-slate-300">
-                                Fasa {phase.phase_number}: {phase.phase_name} ({phase.completed_items}/{phase.total_items} Selesai)
-                            </h3>
-                            <table className="w-full text-[11px] border-collapse border border-slate-300 mt-1">
-                                <thead>
-                                    <tr className="bg-slate-50 text-left">
-                                        <th className="border border-slate-300 p-1.5 w-16 text-center">Kod</th>
-                                        <th className="border border-slate-300 p-1.5">Perkara / Dokumen Semakan</th>
-                                        <th className="border border-slate-300 p-1.5 w-20 text-center">Status</th>
-                                        <th className="border border-slate-300 p-1.5 w-32">No. Rujukan</th>
-                                        <th className="border border-slate-300 p-1.5 w-28">Pemeriksa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {phase.items.map((it) => (
-                                        <tr key={it.id}>
-                                            <td className="border border-slate-300 p-1.5 text-center font-mono font-bold">{it.item_code}</td>
-                                            <td className="border border-slate-300 p-1.5">
-                                                <div className="font-bold">{it.item_title}</div>
-                                                {it.remarks && <div className="text-slate-500 italic mt-0.5">{it.remarks}</div>}
-                                            </td>
-                                            <td className="border border-slate-300 p-1.5 text-center font-bold">
-                                                {it.is_checked == 1 ? '[ / ] Selesai' : it.status === 'not_applicable' ? 'T/B' : '[   ] Belum'}
-                                            </td>
-                                            <td className="border border-slate-300 p-1.5 text-slate-700">{it.reference_no || '-'}</td>
-                                            <td className="border border-slate-300 p-1.5 text-slate-600">{it.checked_by || '-'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 pt-8 mt-8 border-t border-slate-300 break-inside-avoid text-xs">
-                    <div>
-                        <p className="font-bold mb-16">Disediakan Oleh (Pegawai PMO):</p>
-                        <p className="border-t border-slate-400 pt-1 font-bold">Nama: ...................................................</p>
-                        <p className="text-slate-500">Jawatan: Pegawai PMO / Bahagian Teknologi Maklumat</p>
-                        <p className="text-slate-500">Tarikh: .................................................</p>
-                    </div>
-                    <div>
-                        <p className="font-bold mb-16">Disahkan & Diperakui Oleh (Ketua Bahagian / Pengarah):</p>
-                        <p className="border-t border-slate-400 pt-1 font-bold">Nama: ...................................................</p>
-                        <p className="text-slate-500">Jawatan: Pengarah Bahagian Kewangan / BTM PKPMP</p>
-                        <p className="text-slate-500">Tarikh: .................................................</p>
-                    </div>
-                </div>
             </div>
+
+            {/* --- MODAL PRATONTON CETAKAN RASMI (PRINT PREVIEW MODAL) --- */}
+            {isPrintPreviewOpen && (
+                <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-6 flex flex-col items-center print:hidden">
+                    {/* Floating Sticky Control Header */}
+                    <div className="sticky top-2 z-20 w-full max-w-4xl bg-slate-900/95 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center justify-between mb-4 border border-white/15 backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                                    Pratonton Dokumen Cetakan Rasmi (A4)
+                                </h3>
+                                <p className="text-[11px] text-slate-300">Format Pematuhan Tadbir Urus Perolehan ICT PKPMP &bull; Berbilang Halaman</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                            <button
+                                onClick={() => setIsPrintPreviewOpen(false)}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                            <button
+                                onClick={() => {
+                                    window.print();
+                                }}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-indigo-600/40 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                            >
+                                <Printer className="w-4 h-4" /> Cetak Sekarang (PDF)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* A4 Paper Canvas Simulator */}
+                    <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-12 border border-slate-300 mb-12 text-slate-900 animate-in zoom-in-95 duration-200">
+                        {renderPrintableDocument()}
+                    </div>
+                </div>
+            )}
+
+            {/* --- DEDICATED MULTI-PAGE PRINTABLE VIEW (RENDERED DIRECTLY INTO #print-root IN BODY) --- */}
+            {typeof document !== 'undefined' && document.getElementById('print-root') && createPortal(
+                <div className="font-sans text-slate-900 w-full">
+                    {renderPrintableDocument()}
+                </div>,
+                document.getElementById('print-root')
+            )}
         </div>
     );
 };

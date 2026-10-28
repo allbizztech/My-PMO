@@ -1,7 +1,7 @@
 // client/src/services/api.js
 // Pengurus Panggilan API Berpusat MY-PMO PKPMP
 
-export const API_BASE_URL = 'http://localhost/My-PMO/api/modules';
+export const API_BASE_URL = '/My-PMO/api/modules';
 
 export const API_ENDPOINTS = {
     AUTH: `${API_BASE_URL}/auth.php`,
@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
     AUDIT: `${API_BASE_URL}/audit.php`,
     BACKUP: `${API_BASE_URL}/backup.php`,
     SMTP: `${API_BASE_URL}/smtp_settings.php`,
+    EMAIL_TEMPLATES: `${API_BASE_URL}/email_templates.php`,
     PROCUREMENT_CHECKLIST: `${API_BASE_URL}/procurement_checklist.php`
 };
 

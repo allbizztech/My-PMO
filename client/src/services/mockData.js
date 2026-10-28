@@ -66,6 +66,6 @@ export const PROJECT_FINANCE = [
 
 export const MOCK_NOTIFICATIONS = [
     { id: 1, title: 'Projek NDI (PRJ-101)', message: 'Tugasan "Audit Keselamatan" telah selesai.', time: '10 minit lepas', unread: true },
-    { id: 2, title: 'Amaran Bajet', message: 'Projek Integrasi Tol Pintar melebihi bajet sasaran.', time: '1 jam lepas', unread: true },
+    { id: 2, title: 'Amaran Bajet', message: 'Projek Integrasi Sistem Mahkamah Digital melebihi bajet sasaran.', time: '1 jam lepas', unread: true },
     { id: 3, title: 'Kemas Kini Sistem', message: 'Penyelenggaraan pelayan dijadualkan malam ini.', time: 'Semalam', unread: false },
 ];

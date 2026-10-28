@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
     Folder, Mail, Bell, Plus, Edit, Trash2, Server,
     EyeOff, Eye, Save, Send, RefreshCw, CheckCircle2,
-    AlertCircle, AlertTriangle, Clock, ShieldCheck
+    AlertCircle, AlertTriangle, Clock, ShieldCheck,
+    FileText, Tag, Check, Copy, BookmarkCheck, Sparkles
 } from 'lucide-react';
 
 export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifications }) => {
@@ -50,10 +51,33 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
     const [activeAlerts, setActiveAlerts] = useState([]);
     const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
 
+    // Email Templates States
+    const [emailTemplates, setEmailTemplates] = useState([]);
+    const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+    const [isAddTemplateModalOpen, setIsAddTemplateModalOpen] = useState(false);
+    const [isEditTemplateModalOpen, setIsEditTemplateModalOpen] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [tplName, setTplName] = useState('');
+    const [tplCategory, setTplCategory] = useState('mesyuarat');
+    const [tplSubject, setTplSubject] = useState('');
+    const [tplBody, setTplBody] = useState('');
+    const [tplIsDefault, setTplIsDefault] = useState(false);
+
+    const TEMPLATE_TAGS = [
+        { tag: '{TAJUK_MESYUARAT}', desc: 'Tajuk mesyuarat/acara' },
+        { tag: '{TARIKH}', desc: 'Tarikh mesyuarat' },
+        { tag: '{MASA}', desc: 'Masa mesyuarat (cth: 09:30 - 11:30)' },
+        { tag: '{LOKASI}', desc: 'Bilik/lokasi fizikal' },
+        { tag: '{AGENDA}', desc: 'Senarai butiran agenda' },
+        { tag: '{PAUTAN_MEETING}', desc: 'Pautan Microsoft Teams' },
+        { tag: '{PROJEK}', desc: 'Nama projek terlibat' },
+        { tag: '{NAMA_PENGANJUR}', desc: 'Nama pengguna jemputan' }
+    ];
+
     const fetchDivisions = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/divisions.php');
+            const res = await fetch('/My-PMO/api/modules/divisions.php');
             const data = await res.json();
             if (data.status === 'success') {
                 setDivisions(data.data || []);
@@ -68,7 +92,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
     const fetchSmtpSettings = async () => {
         setIsLoadingSmtp(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php');
+            const res = await fetch('/My-PMO/api/modules/smtp_settings.php');
             const data = await res.json();
             if (data.status === 'success' && data.data) {
                 const s = data.data;
@@ -94,7 +118,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
     const fetchAlertsSummary = async () => {
         setIsLoadingAlerts(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/notifications.php');
+            const res = await fetch('/My-PMO/api/modules/notifications.php');
             const data = await res.json();
             if (data.status === 'success') {
                 if (data.counts) setAlertStats(data.counts);
@@ -107,17 +131,33 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         }
     };
 
+    const fetchEmailTemplates = async () => {
+        setIsLoadingTemplates(true);
+        try {
+            const res = await fetch('/My-PMO/api/modules/email_templates.php');
+            const data = await res.json();
+            if (data.status === 'success') {
+                setEmailTemplates(data.data || []);
+            }
+        } catch (err) {
+            console.error('Ralat mengambil templat e-mel:', err);
+        } finally {
+            setIsLoadingTemplates(false);
+        }
+    };
+
     useEffect(() => {
         fetchDivisions();
         fetchSmtpSettings();
         fetchAlertsSummary();
+        fetchEmailTemplates();
     }, []);
 
     const handleSaveSmtp = async (e) => {
         if (e) e.preventDefault();
         setIsSavingSmtp(true);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php', {
+            const res = await fetch('/My-PMO/api/modules/smtp_settings.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -155,7 +195,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         setIsTestingSmtp(true);
         setSmtpTestResult(null);
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/smtp_settings.php', {
+            const res = await fetch('/My-PMO/api/modules/smtp_settings.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -190,7 +230,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!formCode || !formName) return;
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/divisions.php', {
+            const res = await fetch('/My-PMO/api/modules/divisions.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: formCode, name: formName, description: formDesc })
@@ -214,7 +254,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!selectedDivision || !formCode || !formName) return;
 
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/divisions.php?id=${selectedDivision.id}`, {
+            const res = await fetch(`/My-PMO/api/modules/divisions.php?id=${selectedDivision.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: formCode, name: formName, description: formDesc })
@@ -235,7 +275,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!window.confirm(`Adakah anda pasti mahu memadam bahagian "${name}"?`)) return;
 
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/divisions.php?id=${id}`, {
+            const res = await fetch(`/My-PMO/api/modules/divisions.php?id=${id}`, {
                 method: 'DELETE'
             });
             const data = await res.json();
@@ -254,7 +294,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!targetDivisionId || !unitName) return;
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/units.php', {
+            const res = await fetch('/My-PMO/api/modules/units.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ division_id: targetDivisionId, code: unitCode, name: unitName, description: unitDesc })
@@ -278,7 +318,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!selectedUnit || !unitName) return;
 
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/units.php?id=${selectedUnit.id}`, {
+            const res = await fetch(`/My-PMO/api/modules/units.php?id=${selectedUnit.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ division_id: targetDivisionId, code: unitCode, name: unitName, description: unitDesc })
@@ -299,7 +339,7 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
         if (!window.confirm(`Adakah anda pasti mahu memadam unit "${name}"?`)) return;
 
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/units.php?id=${id}`, {
+            const res = await fetch(`/My-PMO/api/modules/units.php?id=${id}`, {
                 method: 'DELETE'
             });
             const data = await res.json();
@@ -309,6 +349,143 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
             }
         } catch (err) {
             alert('Gagal memadam unit.');
+        }
+    };
+
+    // Template Handlers
+    const handleOpenAddTemplate = () => {
+        setTplName('');
+        setTplCategory('mesyuarat');
+        setTplSubject('Jemputan: {TAJUK_MESYUARAT} - {PROJEK}');
+        setTplBody(`Assalamualaikum WBT & Salam Sejahtera,
+
+YBhg. Datuk / Dato\' / Datin / Tuan / Puan,
+
+Dukacita/Sukacita dimaklumkan bahawa mesyuarat bagi projek di bawah seliaan Pejabat Pengurusan Projek (PMO) PKPMP akan diadakan seperti ketetapan berikut:
+
+Tajuk Mesyuarat : {TAJUK_MESYUARAT}
+Projek          : {PROJEK}
+Tarikh          : {TARIKH}
+Masa            : {MASA}
+Lokasi          : {LOKASI}
+Pautan Maya     : {PAUTAN_MEETING}
+
+AGENDA MESYUARAT:
+{AGENDA}
+
+Kehadiran YBhg. Datuk / Dato\' / Datin / Tuan / Puan adalah amat dihargai demi kelancaran pelaksanaan projek ini.
+
+Sekian, terima kasih.
+
+"BERKHIDMAT UNTUK NEGARA"
+
+Pejabat Pengurusan Projek (PMO)
+Bahagian Perkhidmatan Pengurusan (BKS)
+Mahkamah Persekutuan Malaysia (PKPMP)`);
+        setTplIsDefault(false);
+        setIsAddTemplateModalOpen(true);
+    };
+
+    const handleOpenEditTemplate = (tpl) => {
+        setSelectedTemplate(tpl);
+        setTplName(tpl.name || '');
+        setTplCategory(tpl.category || 'mesyuarat');
+        setTplSubject(tpl.subject || '');
+        setTplBody(tpl.body || '');
+        setTplIsDefault(tpl.is_default == 1);
+        setIsEditTemplateModalOpen(true);
+    };
+
+    const handleInsertTag = (tag, target = 'body') => {
+        if (target === 'body') {
+            setTplBody(prev => prev + ' ' + tag);
+        } else {
+            setTplSubject(prev => prev + ' ' + tag);
+        }
+    };
+
+    const handleCreateTemplate = async (e) => {
+        e.preventDefault();
+        if (!tplName || !tplSubject || !tplBody) {
+            alert('Sila lengkapkan nama templat, subjek e-mel dan isi kandungan.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/My-PMO/api/modules/email_templates.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create_template',
+                    name: tplName,
+                    category: tplCategory,
+                    subject: tplSubject,
+                    body: tplBody,
+                    is_default: tplIsDefault ? 1 : 0,
+                    user_id: currentUser?.id || 1
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (showToastNotification) showToastNotification('Templat jemputan e-mel berjaya disimpan!');
+                setIsAddTemplateModalOpen(false);
+                fetchEmailTemplates();
+            } else {
+                alert(data.message || 'Gagal menyimpan templat e-mel.');
+            }
+        } catch (err) {
+            alert('Ralat pelayan semasa menyimpan templat.');
+        }
+    };
+
+    const handleUpdateTemplate = async (e) => {
+        e.preventDefault();
+        if (!selectedTemplate || !tplName || !tplSubject || !tplBody) return;
+
+        try {
+            const res = await fetch(`/My-PMO/api/modules/email_templates.php?id=${selectedTemplate.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: selectedTemplate.id,
+                    name: tplName,
+                    category: tplCategory,
+                    subject: tplSubject,
+                    body: tplBody,
+                    is_default: tplIsDefault ? 1 : 0,
+                    user_id: currentUser?.id || 1
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (showToastNotification) showToastNotification('Templat jemputan e-mel berjaya dikemas kini!');
+                setIsEditTemplateModalOpen(false);
+                setSelectedTemplate(null);
+                fetchEmailTemplates();
+            } else {
+                alert(data.message || 'Gagal mengemas kini templat.');
+            }
+        } catch (err) {
+            alert('Ralat pelayan semasa mengemas kini templat.');
+        }
+    };
+
+    const handleDeleteTemplate = async (id, name) => {
+        if (!window.confirm(`Adakah anda pasti mahu memadam templat e-mel "${name}"?`)) return;
+
+        try {
+            const res = await fetch(`/My-PMO/api/modules/email_templates.php?id=${id}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (showToastNotification) showToastNotification('Templat berjaya dipadam.');
+                fetchEmailTemplates();
+            } else {
+                alert(data.message || 'Gagal memadam templat.');
+            }
+        } catch (err) {
+            alert('Ralat semasa memadam templat.');
         }
     };
 
@@ -322,27 +499,34 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
             </div>
 
             {/* Tab Bar Navigasi Tetapan */}
-            <div className="flex border-b border-slate-200 gap-6">
+            <div className="flex border-b border-slate-200 gap-2 sm:gap-6 overflow-x-auto no-scrollbar pb-1">
                 <button
                     type="button"
                     onClick={() => setActiveSettingsTab('divisions')}
-                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'divisions' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                    className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${activeSettingsTab === 'divisions' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                 >
                     <Folder className="w-4 h-4" /> Bahagian & Unit
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveSettingsTab('smtp')}
-                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'smtp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                    className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${activeSettingsTab === 'smtp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                 >
                     <Mail className="w-4 h-4" /> Konfigurasi E-mel (SMTP)
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveSettingsTab('alerts')}
-                    className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeSettingsTab === 'alerts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                    className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${activeSettingsTab === 'alerts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                 >
                     <Bell className="w-4 h-4" /> Peraturan Notifikasi Pintar (Auto-Alert)
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveSettingsTab('templates')}
+                    className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${activeSettingsTab === 'templates' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                >
+                    <FileText className="w-4 h-4" /> Templat E-mel Jemputan
                 </button>
             </div>
 
@@ -861,6 +1045,112 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
                 </div>
             )}
 
+            {/* TAB 4: TEMPLAT JEMPUTAN E-MEL */}
+            {activeSettingsTab === 'templates' && (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                                    <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                                    Pengurusan Templat E-mel Jemputan Mesyuarat
+                                </h2>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Sediakan dan sesuaikan format surat jemputan e-mel rasmi untuk dihantar bersama kalendar (Outlook, Zimbra, Gmail).
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleOpenAddTemplate}
+                                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center shrink-0 cursor-pointer"
+                            >
+                                <Plus className="w-4 h-4 mr-1.5" /> Tambah Templat Baharu
+                            </button>
+                        </div>
+
+                        {/* Tag/Placeholder Reference Guide */}
+                        <div className="mt-6 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Tag className="w-4 h-4 text-indigo-600" />
+                                <span className="text-xs font-bold text-slate-800">Pemboleh Ubah Dinamik (Placeholder Tags) Yang Disokong:</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mb-3">
+                                Tag ini akan digantikan secara automatik dengan data sebenar acara kalendar semasa e-mel dihantar:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {TEMPLATE_TAGS.map(t => (
+                                    <span key={t.tag} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-indigo-200/80 text-[11px] font-mono text-indigo-700 shadow-xs">
+                                        <span className="font-bold">{t.tag}</span>
+                                        <span className="text-slate-400 font-sans text-[10px]">({t.desc})</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Senarai Templat */}
+                        <div className="mt-6 space-y-4">
+                            {isLoadingTemplates ? (
+                                <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600" />
+                                    Memuat senarai templat e-mel...
+                                </div>
+                            ) : emailTemplates.length > 0 ? (
+                                emailTemplates.map(tpl => (
+                                    <div key={tpl.id} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md hover:border-indigo-200 transition-all">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
+                                            <div className="flex items-center space-x-3">
+                                                <span className="text-xs font-black px-3 py-1 rounded-lg bg-indigo-600 text-white shadow-sm capitalize">
+                                                    {tpl.category || 'mesyuarat'}
+                                                </span>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-sm font-extrabold text-slate-900">{tpl.name}</h3>
+                                                        {tpl.is_default == 1 && (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                <BookmarkCheck className="w-3 h-3" /> Lalai (Default)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 mt-1 font-mono font-medium">
+                                                        <span className="text-slate-400 font-sans font-bold">Subjek:</span> {tpl.subject}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleOpenEditTemplate(tpl)}
+                                                    className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
+                                                    title="Edit Templat"
+                                                >
+                                                    <Edit className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteTemplate(tpl.id, tpl.name)}
+                                                    className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors cursor-pointer border border-slate-200/60 bg-white"
+                                                    title="Padam Templat"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Kandungan Ringkas */}
+                                        <div className="mt-3">
+                                            <pre className="text-xs font-sans text-slate-600 leading-relaxed bg-white p-3 rounded-xl border border-slate-200/60 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                                                {tpl.body}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                                    Tiada templat e-mel dijumpai. Klik butang "Tambah Templat Baharu" di atas.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Tambah Bahagian */}
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1036,6 +1326,248 @@ export const SettingsPage = ({ showToastNotification, currentUser, refreshNotifi
                                     className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 shadow-md cursor-pointer"
                                 >
                                     Simpan Unit
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Tambah Templat E-mel */}
+            {isAddTemplateModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-indigo-600" />
+                            Cipta Templat E-mel Baharu
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4">Sediakan format jemputan mesyuarat atau notifikasi e-mel rasmi.</p>
+
+                        <form onSubmit={handleCreateTemplate} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Templat *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={tplName}
+                                        onChange={(e) => setTplName(e.target.value)}
+                                        placeholder="cth: Jemputan Mesyuarat Tapak & Fizikal"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Kategori *</label>
+                                    <select
+                                        value={tplCategory}
+                                        onChange={(e) => setTplCategory(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500 bg-white"
+                                    >
+                                        <option value="mesyuarat">Mesyuarat PMO / Lembaga</option>
+                                        <option value="peringatan">Peringatan Tindakan / Tarikh Akhir</option>
+                                        <option value="umum">Umum PKPMP</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-bold text-slate-700">Subjek E-mel *</label>
+                                    <div className="flex items-center gap-1 text-[11px] text-indigo-600">
+                                        <span>Selitkan:</span>
+                                        <button type="button" onClick={() => handleInsertTag('{TAJUK_MESYUARAT}', 'subject')} className="hover:underline font-mono font-bold cursor-pointer">{'{TAJUK_MESYUARAT}'}</button>
+                                        <span>•</span>
+                                        <button type="button" onClick={() => handleInsertTag('{PROJEK}', 'subject')} className="hover:underline font-mono font-bold cursor-pointer">{'{PROJEK}'}</button>
+                                    </div>
+                                </div>
+                                <input
+                                    type="text"
+                                    required
+                                    value={tplSubject}
+                                    onChange={(e) => setTplSubject(e.target.value)}
+                                    placeholder="cth: Jemputan: {TAJUK_MESYUARAT} - {PROJEK}"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-bold text-slate-700">Badan Kandungan E-mel (Teks Penuh) *</label>
+                                    <span className="text-[10px] text-slate-400">Klik tag di bawah untuk selitkan</span>
+                                </div>
+
+                                {/* Helper chips */}
+                                <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                    {TEMPLATE_TAGS.map(t => (
+                                        <button
+                                            key={t.tag}
+                                            type="button"
+                                            onClick={() => handleInsertTag(t.tag, 'body')}
+                                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-mono text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 transition-colors cursor-pointer font-bold"
+                                            title={t.desc}
+                                        >
+                                            + {t.tag}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <textarea
+                                    rows="9"
+                                    required
+                                    value={tplBody}
+                                    onChange={(e) => setTplBody(e.target.value)}
+                                    placeholder="Masukkan kandungan e-mel..."
+                                    className="w-full p-3.5 rounded-xl border border-slate-200 text-xs font-sans leading-relaxed focus:outline-none focus:border-indigo-500 font-medium"
+                                ></textarea>
+                            </div>
+
+                            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                <input
+                                    type="checkbox"
+                                    id="tplIsDefaultAdd"
+                                    checked={tplIsDefault}
+                                    onChange={(e) => setTplIsDefault(e.target.checked)}
+                                    className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                                />
+                                <label htmlFor="tplIsDefaultAdd" className="text-xs font-bold text-slate-700 cursor-pointer">
+                                    Jadikan templat lalai (default) untuk jemputan mesyuarat baharu
+                                </label>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddTemplateModalOpen(false)}
+                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md cursor-pointer"
+                                >
+                                    Simpan Templat
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Edit Templat E-mel */}
+            {isEditTemplateModalOpen && selectedTemplate && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-indigo-600" />
+                            Kemaskini Templat E-mel
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4">Ubah suai format jemputan atau subjek templat.</p>
+
+                        <form onSubmit={handleUpdateTemplate} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Templat *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={tplName}
+                                        onChange={(e) => setTplName(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Kategori *</label>
+                                    <select
+                                        value={tplCategory}
+                                        onChange={(e) => setTplCategory(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-indigo-500 bg-white"
+                                    >
+                                        <option value="mesyuarat">Mesyuarat PMO / Lembaga</option>
+                                        <option value="peringatan">Peringatan Tindakan / Tarikh Akhir</option>
+                                        <option value="umum">Umum PKPMP</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-bold text-slate-700">Subjek E-mel *</label>
+                                    <div className="flex items-center gap-1 text-[11px] text-indigo-600">
+                                        <span>Selitkan:</span>
+                                        <button type="button" onClick={() => handleInsertTag('{TAJUK_MESYUARAT}', 'subject')} className="hover:underline font-mono font-bold cursor-pointer">{'{TAJUK_MESYUARAT}'}</button>
+                                        <span>•</span>
+                                        <button type="button" onClick={() => handleInsertTag('{PROJEK}', 'subject')} className="hover:underline font-mono font-bold cursor-pointer">{'{PROJEK}'}</button>
+                                    </div>
+                                </div>
+                                <input
+                                    type="text"
+                                    required
+                                    value={tplSubject}
+                                    onChange={(e) => setTplSubject(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-xs font-bold text-slate-700">Badan Kandungan E-mel *</label>
+                                    <span className="text-[10px] text-slate-400">Klik tag di bawah untuk selitkan</span>
+                                </div>
+
+                                {/* Helper chips */}
+                                <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                    {TEMPLATE_TAGS.map(t => (
+                                        <button
+                                            key={t.tag}
+                                            type="button"
+                                            onClick={() => handleInsertTag(t.tag, 'body')}
+                                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-mono text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 transition-colors cursor-pointer font-bold"
+                                            title={t.desc}
+                                        >
+                                            + {t.tag}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <textarea
+                                    rows="9"
+                                    required
+                                    value={tplBody}
+                                    onChange={(e) => setTplBody(e.target.value)}
+                                    className="w-full p-3.5 rounded-xl border border-slate-200 text-xs font-sans leading-relaxed focus:outline-none focus:border-indigo-500 font-medium"
+                                ></textarea>
+                            </div>
+
+                            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                <input
+                                    type="checkbox"
+                                    id="tplIsDefaultEdit"
+                                    checked={tplIsDefault}
+                                    onChange={(e) => setTplIsDefault(e.target.checked)}
+                                    className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                                />
+                                <label htmlFor="tplIsDefaultEdit" className="text-xs font-bold text-slate-700 cursor-pointer">
+                                    Jadikan templat lalai (default) untuk jemputan mesyuarat baharu
+                                </label>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsEditTemplateModalOpen(false);
+                                        setSelectedTemplate(null);
+                                    }}
+                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md cursor-pointer"
+                                >
+                                    Kemaskini Templat
                                 </button>
                             </div>
                         </form>

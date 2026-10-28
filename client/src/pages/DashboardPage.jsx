@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     CalendarDays, CheckCircle2, ArrowUpRight,
     ArrowDownRight, MoreVertical, RefreshCw, Eye,
@@ -26,7 +26,7 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
     const [activeDonutMenu, setActiveDonutMenu] = useState(false);
 
     useEffect(() => {
-        fetch('http://localhost/My-PMO/api/modules/dashboard.php')
+        fetch('/My-PMO/api/modules/dashboard.php')
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -68,13 +68,13 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+        <div className="space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             {isQuarterModalOpen && (
                 <div className="fixed inset-0 z-[60] overflow-y-auto">
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setIsQuarterModalOpen(false)}></div>
                     <div className="flex min-h-full items-center justify-center p-4">
-                        <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[32px]">
+                        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
                                 <h3 className="font-extrabold text-slate-900 text-lg flex items-center">
                                     <CalendarDays className="w-5 h-5 text-indigo-600 mr-2" /> Pilih Tempoh Laporan
                                 </h3>
@@ -101,23 +101,23 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-3 pb-2 border-b border-slate-100">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard</h1>
-                    <p className="text-slate-500 mt-1 text-lg">Ringkasan analitik dan metrik kemajuan projek.</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Papan Pemuka Prestasi Projek</h1>
+                    <p className="text-slate-500 mt-1 text-xs sm:text-sm">Ringkasan status kemajuan fizikal, pematuhan perolehan, dan peruntukan projek PKPMP.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                 {[
-                    { title: 'Jumlah Projek', value: realTimeTotal, icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+12%', isUp: true, filter: 'Semua' },
-                    { title: 'Projek Aktif', value: realTimeActive, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+5%', isUp: true, filter: 'Aktif' },
-                    { title: 'Projek Lewat', value: realTimeRisk, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '-2%', isUp: false, filter: 'Lewat' },
-                    { title: 'Projek Selesai', value: realTimeCompleted, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+8%', isUp: true, filter: 'Selesai' },
+                    { title: 'Jumlah Projek Berdaftar', value: realTimeTotal, icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', badge: 'Keseluruhan', badgeStyle: 'bg-slate-100 text-slate-700', filter: 'Semua' },
+                    { title: 'Projek Dalam Pelaksanaan', value: realTimeActive, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', badge: `${activePct}% Portfolio`, badgeStyle: 'bg-emerald-50 text-emerald-700 border border-emerald-100', filter: 'Aktif' },
+                    { title: 'Projek Lewat / Berisiko', value: realTimeRisk, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', badge: realTimeRisk > 0 ? `${realTimeRisk} Perlu Tindakan` : 'Terkawal', badgeStyle: realTimeRisk > 0 ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-slate-100 text-slate-600', filter: 'Lewat' },
+                    { title: 'Projek Selesai Sepenuhnya', value: realTimeCompleted, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50', badge: `${completedPct}% Selesai`, badgeStyle: 'bg-blue-50 text-blue-700 border border-blue-100', filter: 'Selesai' },
                 ].map((kpi, i) => (
                     <Card
                         key={i}
-                        className="group hover:border-indigo-300 hover:shadow-lg transition-all cursor-pointer transform hover:-translate-y-1"
+                        className="group hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
                     >
                         <div
                             onClick={() => {
@@ -125,20 +125,19 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
                                 if (setView) setView('projects');
                             }}
                         >
-                            <div className="flex justify-between items-start mb-6">
-                                <div className={`p-3.5 rounded-2xl ${kpi.bg} group-hover:scale-110 transition-transform`}>
-                                    <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
+                            <div className="flex justify-between items-start mb-3.5">
+                                <div className={`p-3 rounded-xl ${kpi.bg}`}>
+                                    <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
                                 </div>
-                                <div className={`flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${kpi.isUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                    {kpi.isUp ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                                    {kpi.trend}
-                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${kpi.badgeStyle}`}>
+                                    {kpi.badge}
+                                </span>
                             </div>
                             <div>
-                                <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{kpi.value}</h3>
-                                <div className="flex items-center justify-between mt-1.5">
-                                    <p className="text-sm font-semibold text-slate-500">{kpi.title}</p>
-                                    <span className="text-[10px] text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Papar &rarr;</span>
+                                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{kpi.value}</h3>
+                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/80">
+                                    <p className="text-xs font-bold text-slate-600">{kpi.title}</p>
+                                    <span className="text-xs text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Papar &rarr;</span>
                                 </div>
                             </div>
                         </div>
@@ -146,7 +145,7 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-5">
                 <Card className="lg:col-span-2 relative flex flex-col justify-between">
                     <div className="flex justify-between items-center mb-6">
                         <div>
@@ -249,7 +248,7 @@ export const DashboardPage = ({ setView, onSelectFilter, showToastNotification, 
                                             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 tracking-wider">
                                                 {div.code}
                                             </span>
-                                            <h4 className="text-xs font-bold text-slate-800 mt-1 truncate max-w-[190px]" title={div.name}>
+                                            <h4 className="text-xs font-bold text-slate-800 mt-1 truncate max-w-full" title={div.name}>
                                                 {div.name}
                                             </h4>
                                         </div>

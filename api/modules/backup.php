@@ -55,38 +55,51 @@ function dumpDatabaseSql($pdo)
     $sql .= "-- ========================================================\n\n";
     $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
-    $tablesStmt = $pdo->query("SHOW TABLES");
+    $tablesStmt = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
     $tables = $tablesStmt->fetchAll(PDO::FETCH_COLUMN);
 
-    foreach ($tables as $table) {
+    foreach ($tables as $rawTable) {
+        // Pengesahan ketat identifier SQL (SAST Compliance & Whitelist)
+        // Hanya membenarkan jadual yang mematuhi format alfanumerik selamat
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', (string)$rawTable)) {
+            continue;
+        }
+        $table = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$rawTable);
+
         // Table structure
-        $createStmt = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+        $createStmt = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_ASSOC);
         $createSql = $createStmt['Create Table'] ?? '';
 
         $sql .= "-- --------------------------------------------------------\n";
-        $sql .= "-- Structure for table `$table` \n";
+        $sql .= "-- Structure for table `{$table}` \n";
         $sql .= "-- --------------------------------------------------------\n";
-        $sql .= "DROP TABLE IF EXISTS `$table`;\n";
+        $sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
         $sql .= $createSql . ";\n\n";
 
         // Table data
-        $rowsStmt = $pdo->query("SELECT * FROM `$table`");
+        $rowsStmt = $pdo->query("SELECT * FROM `{$table}`");
         $rows = $rowsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (count($rows) > 0) {
-            $sql .= "-- Data for table `$table` \n";
+            $sql .= "-- Data for table `{$table}` \n";
             foreach ($rows as $row) {
                 $cols = array_keys($row);
-                $escapedCols = array_map(function ($c) {
-                    return "`" . $c . "`";
-                }, $cols);
-                $escapedValues = array_map(function ($v) use ($pdo) {
-                    if ($v === null)
-                        return 'NULL';
-                    return $pdo->quote($v);
-                }, array_values($row));
+                $escapedCols = [];
+                foreach ($cols as $c) {
+                    $cleanCol = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$c);
+                    $escapedCols[] = "`" . $cleanCol . "`";
+                }
 
-                $sql .= "INSERT INTO `$table` (" . implode(', ', $escapedCols) . ") VALUES (" . implode(', ', $escapedValues) . ");\n";
+                $escapedValues = [];
+                foreach (array_values($row) as $v) {
+                    if ($v === null) {
+                        $escapedValues[] = 'NULL';
+                    } else {
+                        $escapedValues[] = $pdo->quote((string)$v);
+                    }
+                }
+
+                $sql .= "INSERT INTO `{$table}` (" . implode(', ', $escapedCols) . ") VALUES (" . implode(', ', $escapedValues) . ");\n";
             }
             $sql .= "\n";
         }
@@ -406,7 +419,8 @@ if ($method === 'GET') {
         $logs = $logsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Calculate total database size and upload storage size
-        $dbSizeStmt = $pdo->query("SELECT SUM(data_length + index_length) AS db_size FROM information_schema.TABLES WHERE table_schema = '$db'");
+        $dbSizeStmt = $pdo->prepare("SELECT SUM(data_length + index_length) AS db_size FROM information_schema.TABLES WHERE table_schema = ?");
+        $dbSizeStmt->execute([$db]);
         $dbSizeRow = $dbSizeStmt->fetch(PDO::FETCH_ASSOC);
         $totalDbSize = $dbSizeRow['db_size'] ?? 0;
 

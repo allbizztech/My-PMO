@@ -1,0 +1,3 @@
+# Sekat semua akses HTTP terus ke arkib fail sandaran ZIP
+Order allow,deny
+Deny from all

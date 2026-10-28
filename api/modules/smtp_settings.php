@@ -152,6 +152,33 @@ if ($method === 'POST') {
         exit;
     }
 
+    if ($action === 'save_alert_rules') {
+        $notifyOnRisk = isset($input['notify_on_risk']) ? ($input['notify_on_risk'] ? 1 : 0) : 1;
+        $notifyOnOverdue = isset($input['notify_on_overdue_task']) ? ($input['notify_on_overdue_task'] ? 1 : 0) : 1;
+        $notifyOnPayment = isset($input['notify_on_payment_due']) ? ($input['notify_on_payment_due'] ? 1 : 0) : 1;
+
+        try {
+            $sql = "UPDATE smtp_settings SET 
+                        notify_on_risk = ?, 
+                        notify_on_overdue_task = ?, 
+                        notify_on_payment_due = ? 
+                    WHERE id = 1";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$notifyOnRisk, $notifyOnOverdue, $notifyOnPayment]);
+
+            recordAudit($pdo, $userId, 'UPDATE', 'Peraturan Amaran', "Mengemas kini peraturan amaran automatik (Auto-Alert Rules)");
+
+            echo json_encode([
+                "status" => "success",
+                "message" => "Peraturan amaran pintar berjaya dikemas kini."
+            ]);
+        } catch (\PDOException $e) {
+            http_response_code(500);
+            echo json_encode(["status" => "error", "message" => "Ralat menyimpan peraturan amaran: " . $e->getMessage()]);
+        }
+        exit;
+    }
+
     if ($action === 'save_settings') {
         $host = trim($input['smtp_host'] ?? 'smtp.kehakiman.gov.my');
         $port = intval($input['smtp_port'] ?? 587);

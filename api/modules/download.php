@@ -23,9 +23,18 @@ try {
         exit;
     }
 
+    $realUploadDir = realpath('../uploads');
     $filePath = '../uploads/' . $doc['file_path'];
+    $realFilePath = realpath($filePath);
 
-    if (!file_exists($filePath)) {
+    // Pengesahan ketat Path Traversal (CWE-22)
+    if ($realFilePath === false || $realUploadDir === false || strpos($realFilePath, $realUploadDir) !== 0) {
+        http_response_code(403);
+        echo "Akses ditolak: Percubaan laluan fail tidak sah.";
+        exit;
+    }
+
+    if (!file_exists($realFilePath)) {
         http_response_code(404);
         echo "Ralat: Fail fizikal tidak ditemui di pelayan.";
         exit;

@@ -56,7 +56,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await fetch('http://localhost/My-PMO/api/modules/users.php');
+                const res = await fetch('/My-PMO/api/modules/users.php');
                 const data = await res.json();
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     setUserList(data.data);
@@ -100,7 +100,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         const progress = parseInt(formData.get('progress') || '0', 10);
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/projects.php', {
+            const res = await fetch('/My-PMO/api/modules/projects.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -162,7 +162,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchTasks = async () => {
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/tasks.php?project_id=${project.id}`);
+            const res = await fetch(`/My-PMO/api/modules/tasks.php?project_id=${project.id}`);
             const data = await res.json();
             if (data.status === 'success') {
                 const mappedTasks = data.data.map(t => ({
@@ -184,7 +184,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchProjectUsers = async () => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/users.php');
+            const res = await fetch('/My-PMO/api/modules/users.php');
             const data = await res.json();
             if (data.status === 'success') {
                 setProjectUsers(data.data);
@@ -196,7 +196,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchFinances = async () => {
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/finances.php?project_id=${project.id}`);
+            const res = await fetch(`/My-PMO/api/modules/finances.php?project_id=${project.id}`);
             const data = await res.json();
             if (data.status === 'success') {
                 setFinances(data.data);
@@ -208,7 +208,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchDocs = async () => {
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/documents.php?project_id=${project.id}`);
+            const res = await fetch(`/My-PMO/api/modules/documents.php?project_id=${project.id}`);
             const data = await res.json();
             if (data.status === 'success') {
                 setDocs(data.data);
@@ -228,7 +228,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchGanttItems = async () => {
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/gantt.php?project_id=${project.id}`);
+            const res = await fetch(`/My-PMO/api/modules/gantt.php?project_id=${project.id}`);
             const data = await res.json();
             if (data.status === 'success') {
                 setGanttItems(data.data);
@@ -240,7 +240,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const fetchTeamMembers = async () => {
         try {
-            const res = await fetch(`http://localhost/My-PMO/api/modules/project_members.php?project_id=${project.id}`);
+            const res = await fetch(`/My-PMO/api/modules/project_members.php?project_id=${project.id}`);
             const data = await res.json();
             if (data.status === 'success') {
                 setTeamMembers(data.data);
@@ -365,7 +365,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         const category = formData.get('category');
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+            const res = await fetch('/My-PMO/api/modules/documents.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -397,7 +397,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         if (!userId) return;
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/project_members.php', {
+            const res = await fetch('/My-PMO/api/modules/project_members.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ project_id: project.id, user_id: userId, role })
@@ -418,7 +418,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
     const handleRemoveTeamMember = async () => {
         if (!memberToDelete) return;
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/project_members.php', {
+            const res = await fetch('/My-PMO/api/modules/project_members.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: memberToDelete.member_id, project_id: project.id })
@@ -453,7 +453,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
         try {
             if (editingGanttItem) {
-                const res = await fetch('http://localhost/My-PMO/api/modules/gantt.php', {
+                const res = await fetch('/My-PMO/api/modules/gantt.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...reqBody, id: editingGanttItem.id })
@@ -463,7 +463,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                     showToastNotification?.('Item Carta Gantt berjaya dikemas kini!');
                 }
             } else {
-                const res = await fetch('http://localhost/My-PMO/api/modules/gantt.php', {
+                const res = await fetch('/My-PMO/api/modules/gantt.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(reqBody)
@@ -483,7 +483,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
     const handleDeleteGanttItem = async (id) => {
         if (!window.confirm("Adakah anda pasti mahu memadam item Carta Gantt ini?")) return;
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/gantt.php', {
+            const res = await fetch('/My-PMO/api/modules/gantt.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
@@ -531,7 +531,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                     formData.append('file', blob, fl.name);
                 }
 
-                const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+                const res = await fetch('/My-PMO/api/modules/documents.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -581,7 +581,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
             if (targetDocId) {
                 try {
-                    const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+                    const res = await fetch('/My-PMO/api/modules/documents.php', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: targetDocId, user_id: currentUser?.id })
@@ -639,7 +639,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         }
 
         try {
-            await fetch('http://localhost/My-PMO/api/modules/tasks.php', {
+            await fetch('/My-PMO/api/modules/tasks.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: taskId, status: newStatus })
@@ -706,7 +706,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
             );
 
             if (existingFin) {
-                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -721,7 +721,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                 });
             } else {
                 const autoRef = `JDL-${String(milestoneId).slice(-4)}`;
-                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -763,7 +763,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         );
         if (linkedFin) {
             try {
-                await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: linkedFin.id, user_id: currentUser?.id })
@@ -791,7 +791,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
         try {
             if (editingTask) {
-                await fetch('http://localhost/My-PMO/api/modules/tasks.php', {
+                await fetch('/My-PMO/api/modules/tasks.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -820,7 +820,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                     dueDate,
                     assignee: assigneeId
                 };
-                await fetch('http://localhost/My-PMO/api/modules/tasks.php', {
+                await fetch('/My-PMO/api/modules/tasks.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -867,7 +867,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const handleDeleteTask = async (id) => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/tasks.php', {
+            const res = await fetch('/My-PMO/api/modules/tasks.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
@@ -904,7 +904,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
         try {
             if (editingFinance) {
-                const res = await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                const res = await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...reqBody, id: editingFinance.id })
@@ -914,7 +914,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                     showToastNotification('Rekod kewangan berjaya dikemas kini!');
                 }
             } else {
-                const res = await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                const res = await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(reqBody)
@@ -952,7 +952,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const handleDeleteFinance = async (id) => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+            const res = await fetch('/My-PMO/api/modules/finances.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, user_id: currentUser?.id })
@@ -995,7 +995,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                 docFormData.append('fileName', `Butiran_Denda_${refNo}`);
                 docFormData.append('file', fileInput);
 
-                const docRes = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+                const docRes = await fetch('/My-PMO/api/modules/documents.php', {
                     method: 'POST',
                     body: docFormData
                 });
@@ -1022,7 +1022,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
         try {
             if (editingPenalty) {
-                const res = await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                const res = await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...reqBody, id: editingPenalty.id })
@@ -1038,7 +1038,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                     alert('Gagal mengemaskini denda: ' + data.message);
                 }
             } else {
-                const res = await fetch('http://localhost/My-PMO/api/modules/finances.php', {
+                const res = await fetch('/My-PMO/api/modules/finances.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(reqBody)
@@ -1065,7 +1065,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
         formData.append('uploader_id', currentUser?.id || '');
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+            const res = await fetch('/My-PMO/api/modules/documents.php', {
                 method: 'POST',
                 body: formData
             });
@@ -1086,7 +1086,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
 
     const handleDeleteDoc = async (id) => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+            const res = await fetch('/My-PMO/api/modules/documents.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, user_id: currentUser?.id })
@@ -1312,8 +1312,8 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                                     return (
                                         <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl">
                                             <label className="block text-xs font-extrabold uppercase tracking-wider text-indigo-900 mb-1.5 flex items-center justify-between">
-                                                <span>Pilih Daripada Jadual Bayaran Projek (Pilihan Pintar)</span>
-                                                <span className="text-[11px] text-indigo-600 font-semibold lowercase">auto-isi fasa & amaun</span>
+                                                <span>Pautkan ke Jadual Bayaran / Milestone Projek</span>
+                                                <span className="text-[11px] text-indigo-600 font-semibold lowercase">isi fasa & amaun automatik</span>
                                             </label>
                                             <select 
                                                 key={editingFinance ? `edit-fin-${editingFinance.id}-${matchedMilestoneId}` : 'new-fin'}
@@ -1706,7 +1706,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                                                     showToastNotification?.(`Status tugasan ditukar kepada ${st.label}`);
                                                 }
                                                 try {
-                                                    await fetch('http://localhost/My-PMO/api/modules/tasks.php', {
+                                                    await fetch('/My-PMO/api/modules/tasks.php', {
                                                         method: 'PUT',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ id: updated.id, status: st.id })
@@ -1844,7 +1844,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                                                     formData.append('fileName', file.name.replace(/\.[^/.]+$/, ""));
                                                     formData.append('file', file);
 
-                                                    const res = await fetch('http://localhost/My-PMO/api/modules/documents.php', {
+                                                    const res = await fetch('/My-PMO/api/modules/documents.php', {
                                                         method: 'POST',
                                                         body: formData
                                                     });
@@ -2194,7 +2194,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
             {/* --- CONTENT PAGE (10k USD ENTERPRISE PMO DESIGN) --- */}
 
             {/* Header & Main Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 print:hidden">
                 <div>
                     <div className="flex items-center text-xs font-semibold text-slate-500 space-x-2 mb-1">
                         <span
@@ -2231,7 +2231,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
             </div>
 
             {/* Main Hero Card Container */}
-            <div className="relative overflow-hidden bg-white border border-slate-200/90 shadow-lg shadow-slate-200/40 rounded-2xl p-4 sm:p-5 lg:p-6 mb-5 transition-all">
+            <div className="relative overflow-hidden bg-white border border-slate-200/90 shadow-lg shadow-slate-200/40 rounded-2xl p-4 sm:p-5 lg:p-6 mb-5 transition-all print:hidden">
                 {/* Background Ambient Decorative Light */}
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-bl from-indigo-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none"></div>
                 <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none hidden sm:block">
@@ -2405,7 +2405,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
             </div>
 
             {/* --- TABS NAVIGATION (COMPACT 1-PAGE ZERO-SCROLL GRID) --- */}
-            <div className="bg-slate-100/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 mb-5 shadow-inner w-full">
+            <div className="bg-slate-100/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 mb-5 shadow-inner w-full print:hidden">
                 {[
                     { id: 'Jadual Bayaran', label: 'Jadual Bayaran', icon: Wallet },
                     { id: 'Carta Gantt', label: 'Carta Gantt', icon: CalendarIcon },
@@ -3100,7 +3100,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                                                                     <FileText className="w-5 h-5 text-indigo-600" />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => window.open(`http://localhost/My-PMO/api/modules/download.php?id=${doc.id}&user_id=${currentUser?.id}`, '_blank')}>{doc.file_name}</p>
+                                                                    <p className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => window.open(`/My-PMO/api/modules/download.php?id=${encodeURIComponent(doc.id)}&user_id=${encodeURIComponent(currentUser?.id || '')}`, '_blank', 'noopener,noreferrer')}>{doc.file_name}</p>
                                                                     <p className="text-xs font-medium text-slate-400 mt-0.5">{formatDateMalay(doc.created_at ? doc.created_at.split(' ')[0] : '')}</p>
                                                                 </div>
                                                             </div>
@@ -3112,7 +3112,7 @@ export const ProjectDetailPage = ({ setView, project, showToastNotification, cur
                                                         <td className="px-6 py-4 text-sm font-semibold text-slate-500 whitespace-nowrap">{formatFileSize(doc.file_size)}</td>
                                                         <td className="px-6 py-4 text-right whitespace-nowrap">
                                                             <div className="flex items-center justify-end space-x-1.5 shrink-0">
-                                                                <button onClick={() => window.open(`http://localhost/My-PMO/api/modules/download.php?id=${doc.id}&user_id=${currentUser?.id}`, '_blank')} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors text-slate-500 shadow-sm" title="Muat Turun Dokumen"><Download className="w-4 h-4" /></button>
+                                                                <button onClick={() => window.open(`/My-PMO/api/modules/download.php?id=${encodeURIComponent(doc.id)}&user_id=${encodeURIComponent(currentUser?.id || '')}`, '_blank', 'noopener,noreferrer')} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors text-slate-500 shadow-sm" title="Muat Turun Dokumen"><Download className="w-4 h-4" /></button>
                                                                 <button onClick={() => setEditingDoc(doc)} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors text-slate-500 shadow-sm" title="Ubah Dokumen"><Edit className="w-4 h-4" /></button>
                                                                 <button onClick={() => setDocToDelete(doc)} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors text-slate-500 shadow-sm" title="Padam Dokumen"><Trash2 className="w-4 h-4" /></button>
                                                             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Filter, UserPlus, Users, ShieldCheck,
     Key, Edit, Trash2, Lock
@@ -7,13 +7,13 @@ import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { MOCK_ROLES, TEAM_MEMBERS } from '../services/mockData';
 
-export const UsersPage = () => {
+export const UsersPage = ({ showToastNotification }) => {
     const [activeTab, setActiveTab] = useState('users');
     const [users, setUsers] = useState([]);
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/users.php');
+            const res = await fetch('/My-PMO/api/modules/users.php');
             const data = await res.json();
             if (data.status === 'success') {
                 const mappedData = data.data.map(u => ({
@@ -70,13 +70,13 @@ export const UsersPage = () => {
                 const pwd = formData.get('password');
                 if (pwd) bodyObj.password = pwd;
 
-                await fetch('http://localhost/My-PMO/api/modules/users.php', {
+                await fetch('/My-PMO/api/modules/users.php', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(bodyObj)
                 });
             } else {
-                await fetch('http://localhost/My-PMO/api/modules/users.php', {
+                await fetch('/My-PMO/api/modules/users.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -99,7 +99,7 @@ export const UsersPage = () => {
 
     const handleDeleteUser = async (id) => {
         try {
-            await fetch('http://localhost/My-PMO/api/modules/users.php', {
+            await fetch('/My-PMO/api/modules/users.php', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
@@ -122,7 +122,7 @@ export const UsersPage = () => {
         }
 
         try {
-            const res = await fetch('http://localhost/My-PMO/api/modules/users.php', {
+            const res = await fetch('/My-PMO/api/modules/users.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -1,0 +1,3 @@
+# Sekat semua akses HTTP terus ke folder fungsi dalaman
+Order allow,deny
+Deny from all
